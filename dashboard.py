@@ -391,6 +391,57 @@ DASHBOARD_HTML = """
                     </div>
                 </div>
             </div>
+            
+            <!-- Virtual Trading Showcase -->
+            <div class="card" style="grid-column: span 12; margin-top: 20px;">
+                <div class="card-header">
+                    <span class="card-title">💰 Virtual Trading Performance (Paper Trading)</span>
+                </div>
+                <div style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 16px; margin-bottom: 20px;">
+                    <div class="usage-item">
+                        <div id="vt-total-pnl" class="usage-value" style="font-size: 32px;">₹0</div>
+                        <div class="usage-label">Total P&L</div>
+                    </div>
+                    <div class="usage-item">
+                        <div id="vt-today-pnl" class="usage-value">₹0</div>
+                        <div class="usage-label">Today's P&L</div>
+                    </div>
+                    <div class="usage-item">
+                        <div id="vt-win-rate" class="usage-value">0%</div>
+                        <div class="usage-label">Win Rate</div>
+                    </div>
+                    <div class="usage-item">
+                        <div id="vt-total-trades" class="usage-value">0</div>
+                        <div class="usage-label">Total Trades</div>
+                    </div>
+                    <div class="usage-item">
+                        <div id="vt-open-trades" class="usage-value">0</div>
+                        <div class="usage-label">Open Positions</div>
+                    </div>
+                </div>
+                
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                    <!-- Recent Trades -->
+                    <div>
+                        <h4 style="margin-bottom: 12px; color: var(--text-secondary);">📋 Recent Trades</h4>
+                        <div id="vt-recent-trades" style="max-height: 200px; overflow-y: auto;">
+                            <div style="text-align: center; padding: 20px; color: var(--text-secondary);">
+                                No trades yet...
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Open Positions -->
+                    <div>
+                        <h4 style="margin-bottom: 12px; color: var(--text-secondary);">📊 Open Positions</h4>
+                        <div id="vt-open-positions" style="max-height: 200px; overflow-y: auto;">
+                            <div style="text-align: center; padding: 20px; color: var(--text-secondary);">
+                                No open positions...
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
     
@@ -720,7 +771,69 @@ DASHBOARD_HTML = """
                 // Fetch candle updates for current chart
                 fetchCandles(currentChartIndex);
                 
+                // Fetch virtual trading data
+                fetchVirtualTrades();
+                
             } catch (e) { console.error(e); }
+        }
+        
+        async function fetchVirtualTrades() {
+            try {
+                const res = await fetch('/api/virtual_trades');
+                const data = await res.json();
+                
+                if (data.error) return;
+                
+                const stats = data.stats || {};
+                
+                // Update stats display
+                const totalPnl = stats.total_pnl || 0;
+                const todayPnl = stats.todays_pnl || 0;
+                
+                document.getElementById('vt-total-pnl').textContent = `₹${totalPnl >= 0 ? '+' : ''}${totalPnl.toLocaleString()}`;
+                document.getElementById('vt-total-pnl').style.color = totalPnl >= 0 ? 'var(--accent-green)' : 'var(--accent-red)';
+                
+                document.getElementById('vt-today-pnl').textContent = `₹${todayPnl >= 0 ? '+' : ''}${todayPnl.toLocaleString()}`;
+                document.getElementById('vt-today-pnl').style.color = todayPnl >= 0 ? 'var(--accent-green)' : 'var(--accent-red)';
+                
+                document.getElementById('vt-win-rate').textContent = `${stats.win_rate || 0}%`;
+                document.getElementById('vt-total-trades').textContent = stats.total_trades || 0;
+                document.getElementById('vt-open-trades').textContent = stats.open_trades || 0;
+                
+                // Render recent trades
+                const recentTradesDiv = document.getElementById('vt-recent-trades');
+                if (data.recent_trades && data.recent_trades.length > 0) {
+                    recentTradesDiv.innerHTML = data.recent_trades.map(t => {
+                        const emoji = t.pnl > 0 ? '✅' : (t.pnl < 0 ? '❌' : '⏳');
+                        const pnlColor = t.pnl > 0 ? 'var(--accent-green)' : (t.pnl < 0 ? 'var(--accent-red)' : 'var(--text-secondary)');
+                        const statusText = t.status === 'OPEN' ? 'Open' : (t.status === 'TARGET_HIT' ? 'Target' : 'SL');
+                        return `
+                            <div style="display: flex; justify-content: space-between; padding: 8px 12px; background: var(--bg-secondary); border-radius: 8px; margin-bottom: 8px;">
+                                <span>${emoji} ${t.signal_type} ${t.index} ${t.strike}</span>
+                                <span style="color: ${pnlColor}; font-weight: 600;">₹${t.pnl >= 0 ? '+' : ''}${(t.pnl || 0).toLocaleString()}</span>
+                            </div>
+                        `;
+                    }).join('');
+                } else {
+                    recentTradesDiv.innerHTML = '<div style="text-align: center; padding: 20px; color: var(--text-secondary);">No trades yet...</div>';
+                }
+                
+                // Render open positions
+                const openPosDiv = document.getElementById('vt-open-positions');
+                if (data.open_trades && data.open_trades.length > 0) {
+                    openPosDiv.innerHTML = data.open_trades.map(t => {
+                        return `
+                            <div style="display: flex; justify-content: space-between; padding: 8px 12px; background: var(--bg-secondary); border-radius: 8px; margin-bottom: 8px; border-left: 3px solid ${t.signal_type === 'CALL' ? 'var(--accent-green)' : 'var(--accent-red)'};">
+                                <span>🔄 ${t.signal_type} ${t.index} ${t.strike}</span>
+                                <span style="color: var(--text-secondary);">Entry: ₹${t.entry_premium}</span>
+                            </div>
+                        `;
+                    }).join('');
+                } else {
+                    openPosDiv.innerHTML = '<div style="text-align: center; padding: 20px; color: var(--text-secondary);">No open positions...</div>';
+                }
+                
+            } catch (e) { console.error('Error fetching virtual trades:', e); }
         }
         
         function switchChart(indexName) {

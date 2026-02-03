@@ -31,6 +31,7 @@ from ai_analyzer import GeminiAnalyzer
 from usage_monitor import get_usage_monitor
 from index_config import get_index_manager, IndexConfig
 from signal_tracker import get_signal_tracker
+from virtual_trader import get_virtual_trader
 
 # Import dashboard functions (optional)
 try:
@@ -179,6 +180,12 @@ class AITradingSystem:
                     await self._analyze_single_index(index_config)
                 except Exception as e:
                     logger.error(f"Error analyzing {index_config.display_name}: {e}")
+            
+            # Check virtual trades for target/SL hit
+            await self._update_virtual_trades()
+            
+            # Send hourly performance update
+            await self._send_hourly_showcase()
                     
         except Exception as e:
             logger.error(f"❌ Error in analysis cycle: {e}", exc_info=True)
@@ -387,12 +394,55 @@ class AITradingSystem:
                         "target": analysis.get("target_points", 0),
                         "stop_loss": analysis.get("stop_loss_points", 0),
                     })
+                    
+                    # Open virtual trade for P&L tracking
+                    virtual_trader = get_virtual_trader()
+                    entry_premium = 100  # Estimated ATM premium
+                    virtual_trader.open_trade(
+                        index=index_name,
+                        signal_type=signal,
+                        strike=analysis.get("entry_strike", 0),
+                        spot_price=spot_price,
+                        entry_premium=entry_premium,
+                        target_points=analysis.get("target_points", 30),
+                        stop_loss_points=analysis.get("stop_loss_points", 15),
+                    )
         else:
             logger.info(f"⏸️ {index_name} No alert - Signal: {signal}, Confidence: {confidence}%")
         
         # Clear old signals periodically
         if len(self._last_signals) > 100:
             self._last_signals.clear()
+    
+    async def _update_virtual_trades(self):
+        """Update virtual trades - check if target/SL hit."""
+        try:
+            virtual_trader = get_virtual_trader()
+            enabled_indices = self.index_manager.get_enabled_indices()
+            
+            for index_config in enabled_indices:
+                if index_config.name not in self._expiry_dates:
+                    continue
+                
+                # Get current spot price
+                spot_data = await self.data_fetcher.get_spot_price(index_config.symbol)
+                if spot_data:
+                    spot_price = spot_data.get('last_price', 0)
+                    virtual_trader.check_and_update_trades(index_config.name, spot_price)
+        except Exception as e:
+            logger.error(f"Error updating virtual trades: {e}")
+    
+    async def _send_hourly_showcase(self):
+        """Send hourly performance showcase to Telegram."""
+        try:
+            virtual_trader = get_virtual_trader()
+            
+            if virtual_trader.should_send_hourly_update():
+                showcase_msg = virtual_trader.get_showcase_message()
+                await self.notifier.send_message(showcase_msg)
+                logger.info("📊 Sent hourly performance showcase to Telegram")
+        except Exception as e:
+            logger.error(f"Error sending hourly showcase: {e}")
     
     async def _run_rule_based_analysis(self, index_name, spot_price, strikes_data, pcr_data, vwap):
         """Fallback to rule-based strategy."""

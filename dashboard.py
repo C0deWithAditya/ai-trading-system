@@ -934,6 +934,40 @@ def api_signals_history():
         return jsonify({"error": str(e)}), 500
 
 
+@app.route('/api/virtual_trades')
+def api_virtual_trades():
+    """Get virtual trading statistics and showcase."""
+    try:
+        from virtual_trader import get_virtual_trader
+        trader = get_virtual_trader()
+        stats = trader.get_stats()
+        
+        # Add recent trades
+        recent = [t.to_dict() for t in trader.trades[-10:][::-1]]
+        
+        return jsonify({
+            "stats": stats,
+            "recent_trades": recent,
+            "open_trades": [t.to_dict() for t in trader.get_open_trades()],
+        })
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route('/api/virtual_showcase')
+def api_virtual_showcase():
+    """Get virtual trading showcase message."""
+    try:
+        from virtual_trader import get_virtual_trader
+        trader = get_virtual_trader()
+        return jsonify({
+            "message": trader.get_showcase_message(),
+            "stats": trader.get_stats(),
+        })
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
 def run_dashboard(host='0.0.0.0', port=None):
     """Run the dashboard server."""
     import os

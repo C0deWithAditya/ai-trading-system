@@ -9,6 +9,7 @@ import json
 import os
 import sys
 from datetime import datetime
+import pytz
 from flask import Flask, render_template_string, jsonify, Response, request
 import queue
 
@@ -50,9 +51,11 @@ update_queue = queue.Queue()
 
 def add_signal(signal_data: dict):
     """Add a new signal to the dashboard."""
-    signal_data["timestamp"] = datetime.now().strftime("%H:%M:%S")
+    ist = pytz.timezone('Asia/Kolkata')
+    now = datetime.now(ist)
+    signal_data["timestamp"] = now.strftime("%H:%M:%S")
     # Add timestamp for chart marker (approximate)
-    signal_data["chart_time"] = int(datetime.now().timestamp())
+    signal_data["chart_time"] = int(now.timestamp())
     
     dashboard_state["signals"].insert(0, signal_data)
     dashboard_state["signals"] = dashboard_state["signals"][:100]  # Keep last 100

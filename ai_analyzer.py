@@ -9,6 +9,7 @@ import asyncio
 import json
 from typing import Dict, List, Optional, Any
 from datetime import datetime
+import pytz
 
 from config import TRADING_CONFIG
 from indicators import StrikeData
@@ -299,10 +300,10 @@ IMPORTANT:
 {reasoning}
 
 ━━━━━━━━━━━━━━━━━━━━━━
-⏰ {datetime.now().strftime('%H:%M:%S')} | {datetime.now().strftime('%d-%b-%Y')}
+⏰ {datetime.now(pytz.timezone('Asia/Kolkata')).strftime('%H:%M:%S')} | {datetime.now(pytz.timezone('Asia/Kolkata')).strftime('%d-%b-%Y')}
 
-⚠️ <i>{index_name}. 
-mast trading kro</i>
+⚠️ <i>Disclaimer: This is an AI-generated signal for {index_name}. 
+Do your own analysis before trading. Trade at your own risk.</i>
 """
         return message
 

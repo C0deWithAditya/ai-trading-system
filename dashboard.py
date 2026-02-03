@@ -908,6 +908,32 @@ def api_add_signal():
     return jsonify({"status": "ok"})
 
 
+@app.route('/api/performance')
+def api_performance():
+    """Get signal performance statistics."""
+    try:
+        from signal_tracker import get_signal_tracker
+        tracker = get_signal_tracker()
+        index_name = request.args.get('index', None)
+        stats = tracker.get_stats(index_name)
+        return jsonify(stats)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route('/api/signals_history')
+def api_signals_history():
+    """Get signal history."""
+    try:
+        from signal_tracker import get_signal_tracker
+        tracker = get_signal_tracker()
+        limit = int(request.args.get('limit', 20))
+        signals = tracker.signals[-limit:][::-1]  # Most recent first
+        return jsonify(signals)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
 def run_dashboard(host='0.0.0.0', port=None):
     """Run the dashboard server."""
     import os

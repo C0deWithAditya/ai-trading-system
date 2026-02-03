@@ -30,6 +30,7 @@ from notifier import TelegramNotifier
 from ai_analyzer import GeminiAnalyzer
 from usage_monitor import get_usage_monitor
 from index_config import get_index_manager, IndexConfig
+from signal_tracker import get_signal_tracker
 
 # Import dashboard functions (optional)
 try:
@@ -312,9 +313,22 @@ class AITradingSystem:
         # Send alert if confidence meets threshold
         if signal in ["CALL", "PUT"] and confidence >= AI_CONFIG.min_confidence:
             signal_key = f"{index_name}_{signal}_{analysis.get('entry_strike', 0)}"
+            opposite_signal = "PUT" if signal == "CALL" else "CALL"
             
-            # Allow same signal if 10 minutes have passed since last one
-            current_time = datetime.now()
+            # Check for flip-flop prevention (no opposite signal within 5 minutes)
+            ist = pytz.timezone('Asia/Kolkata')
+            current_time = datetime.now(ist)
+            
+            # Check if we sent an OPPOSITE signal recently (flip-flop prevention)
+            flip_flop_threshold = 300  # 5 minutes
+            for key, last_time in self._last_signals.items():
+                if key.startswith(f"{index_name}_{opposite_signal}_"):
+                    time_since_opposite = (current_time - last_time).total_seconds()
+                    if time_since_opposite < flip_flop_threshold:
+                        logger.info(f"⏸️ Skipping {signal} - sent opposite signal {int(time_since_opposite)}s ago")
+                        return
+            
+            # Check if same signal was sent recently (repeat prevention)
             last_signal_time = self._last_signals.get(signal_key)
             time_threshold = 600  # 10 minutes in seconds
             
@@ -348,6 +362,20 @@ class AITradingSystem:
                     
                     # Track alert sent
                     self.usage_monitor.current_usage.alerts_sent += 1
+                    
+                    # Track signal for performance analysis
+                    tracker = get_signal_tracker()
+                    tracker.add_signal(
+                        index_name=index_name,
+                        signal_type=signal,
+                        strike=analysis.get("entry_strike", 0),
+                        entry_price=0,  # Will be updated when checking outcome
+                        spot_at_signal=spot_price,
+                        target_points=analysis.get("target_points", 0),
+                        stop_loss_points=analysis.get("stop_loss_points", 0),
+                        confidence=confidence,
+                        reasoning=reasoning,
+                    )
                     
                     # Add signal to dashboard with index
                     add_signal({

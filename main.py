@@ -487,9 +487,14 @@ def main():
     # Start Dashboard in a separate thread
     try:
         import threading
+        import os
         from dashboard import run_dashboard
-        logger.info("🖥️ Starting Dashboard on http://127.0.0.1:8080")
-        t = threading.Thread(target=run_dashboard, kwargs={'port': 8080})
+        
+        # Use PORT from environment (Railway sets this) or default to 8080
+        port = int(os.environ.get('PORT', 8080))
+        logger.info(f"🖥️ Starting Dashboard on http://0.0.0.0:{port}")
+        
+        t = threading.Thread(target=run_dashboard, kwargs={'host': '0.0.0.0', 'port': port})
         t.daemon = True
         t.start()
     except Exception as e:

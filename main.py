@@ -8,7 +8,8 @@ import logging
 import signal
 import sys
 import os
-from datetime import datetime, time as dt_time
+from datetime import datetime, time as dt_time, timedelta
+import pytz
 from typing import Optional
 
 # Add parent directory to path for imports
@@ -92,8 +93,9 @@ class AITradingSystem:
         self.market_close = dt_time(15, 30)
     
     def is_market_hours(self) -> bool:
-        """Check if current time is within market hours."""
-        now = datetime.now().time()
+        """Check if current time is within market hours (IST)."""
+        timezone = pytz.timezone('Asia/Kolkata')
+        now = datetime.now(timezone).time()
         return self.market_open <= now <= self.market_close
     
     async def initialize(self):

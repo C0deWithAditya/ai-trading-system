@@ -479,8 +479,8 @@ def api_create_payment():
     return jsonify({
         "payment": payment,
         "upi_link": upi_link,
-        "upi_id": payment_mgr.UPI_ID,
-        "upi_name": payment_mgr.UPI_NAME,
+        "upi_id": payment_mgr.upi_id,
+        "upi_name": payment_mgr.upi_name,
     })
 
 
@@ -584,3 +584,26 @@ def api_admin_add_balance():
     wallet_mgr.add_balance(email, amount, "Admin manual credit")
     
     return jsonify({"success": True, "new_balance": wallet_mgr.get_balance(email)})
+
+
+@auth_bp.route('/api/admin/settings')
+@admin_required
+def api_admin_get_settings():
+    """Get admin settings (admin only)."""
+    payment_mgr = get_payment_manager()
+    return jsonify(payment_mgr.get_settings())
+
+
+@auth_bp.route('/api/admin/settings', methods=['POST'])
+@admin_required
+def api_admin_update_settings():
+    """Update admin settings (admin only)."""
+    data = request.json
+    payment_mgr = get_payment_manager()
+    
+    upi_id = data.get('upi_id', payment_mgr.upi_id)
+    upi_name = data.get('upi_name', payment_mgr.upi_name)
+    
+    payment_mgr.update_upi_settings(upi_id, upi_name)
+    
+    return jsonify({"success": True, "settings": payment_mgr.get_settings()})

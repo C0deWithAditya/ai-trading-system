@@ -294,12 +294,14 @@ class WalletManager:
 class PaymentManager:
     """Manages payment requests and approvals."""
     
-    # UPI Details
-    UPI_ID = "adityagen.lko@oksbi"
-    UPI_NAME = "Aditya Verma"
+    # Default UPI Details
+    DEFAULT_UPI_ID = "adityagen.lko12@oksbi"
+    DEFAULT_UPI_NAME = "Aditya Verma"
+    SETTINGS_FILE = "data/settings.json"
     
     def __init__(self):
         self.payments: List[Dict] = []
+        self.settings: Dict = {}
         self.load()
     
     def load(self):
@@ -307,6 +309,10 @@ class PaymentManager:
             if Path(PAYMENTS_FILE).exists():
                 with open(PAYMENTS_FILE, 'r') as f:
                     self.payments = json.load(f)
+            # Load settings
+            if Path(self.SETTINGS_FILE).exists():
+                with open(self.SETTINGS_FILE, 'r') as f:
+                    self.settings = json.load(f)
         except Exception as e:
             print(f"Error loading payments: {e}")
     
@@ -316,6 +322,35 @@ class PaymentManager:
                 json.dump(self.payments, f, indent=2)
         except Exception as e:
             print(f"Error saving payments: {e}")
+    
+    def save_settings(self):
+        try:
+            with open(self.SETTINGS_FILE, 'w') as f:
+                json.dump(self.settings, f, indent=2)
+        except Exception as e:
+            print(f"Error saving settings: {e}")
+    
+    @property
+    def upi_id(self) -> str:
+        return self.settings.get("upi_id", self.DEFAULT_UPI_ID)
+    
+    @property
+    def upi_name(self) -> str:
+        return self.settings.get("upi_name", self.DEFAULT_UPI_NAME)
+    
+    def update_upi_settings(self, upi_id: str, upi_name: str) -> bool:
+        """Update UPI settings (admin only)."""
+        self.settings["upi_id"] = upi_id
+        self.settings["upi_name"] = upi_name
+        self.save_settings()
+        return True
+    
+    def get_settings(self) -> Dict:
+        """Get current settings."""
+        return {
+            "upi_id": self.upi_id,
+            "upi_name": self.upi_name,
+        }
     
     def create_payment_request(self, email: str, amount: float, name: str, phone: str) -> Dict:
         """Create a new payment request."""
@@ -343,7 +378,7 @@ class PaymentManager:
     
     def get_upi_link(self, amount: float, payment_id: str) -> str:
         """Generate UPI payment link."""
-        return f"upi://pay?pa={self.UPI_ID}&pn={self.UPI_NAME}&am={amount}&tn=TradingAI-{payment_id}&cu=INR"
+        return f"upi://pay?pa={self.upi_id}&pn={self.upi_name}&am={amount}&tn=TradingAI-{payment_id}&cu=INR"
     
     def approve_payment(self, payment_id: str, admin_email: str) -> bool:
         """Admin approves a payment."""

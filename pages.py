@@ -242,8 +242,8 @@ def subscribe_page():
             
             <div class="upi-box" id="upiBox" style="display: none;">
                 <p>📱 Pay via UPI</p>
-                <div class="upi-id" id="upiIdDisplay">adityagen.lko@oksbi</div>
-                <p style="color: rgba(255,255,255,0.6); font-size: 14px;">Pay to: Aditya Verma</p>
+                <div class="upi-id" id="upiIdDisplay">Loading...</div>
+                <p style="color: rgba(255,255,255,0.6); font-size: 14px;">Pay to: <span id="upiNameDisplay">...</span></p>
                 <a href="#" id="upiLink" class="btn btn-green" style="display: inline-block; width: auto; margin-top: 10px; padding: 14px 30px;">Open UPI App to Pay</a>
                 <p style="margin-top: 15px; font-size: 12px; color: rgba(255,255,255,0.5);">
                     After payment, it will be verified by admin and credited to your wallet.
@@ -330,6 +330,7 @@ def subscribe_page():
             if (data.payment) {
                 document.getElementById('upiLink').href = data.upi_link;
                 document.getElementById('upiIdDisplay').textContent = data.upi_id;
+                document.getElementById('upiNameDisplay').textContent = data.upi_name;
                 document.getElementById('upiBox').style.display = 'block';
                 document.getElementById('proceedBtn').style.display = 'none';
             }
@@ -831,6 +832,7 @@ def admin_page():
                 <button class="tab active" onclick="showSection('users', this)">👥 Users</button>
                 <button class="tab" onclick="showSection('payments', this)">💳 Payments</button>
                 <button class="tab" onclick="showSection('subscriptions', this)">📦 Subscriptions</button>
+                <button class="tab" onclick="showSection('settings', this)">⚙️ Settings</button>
             </div>
             
             <!-- Users Section -->
@@ -898,6 +900,33 @@ def admin_page():
                             <input type="number" id="walletAmount" placeholder="500" min="1">
                         </div>
                         <button class="btn btn-approve" onclick="addWalletBalance()">Add Balance</button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Settings Section -->
+            <div id="settings" class="section">
+                <div class="card">
+                    <h3 class="card-title">💳 UPI Payment Settings</h3>
+                    <p style="color: rgba(255,255,255,0.5); margin-bottom: 20px;">
+                        Configure UPI details for payment collection
+                    </p>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr auto; gap: 16px; align-items: end;">
+                        <div class="form-group" style="margin: 0;">
+                            <label>UPI ID</label>
+                            <input type="text" id="settingsUpiId" placeholder="yourname@upi">
+                        </div>
+                        <div class="form-group" style="margin: 0;">
+                            <label>Display Name</label>
+                            <input type="text" id="settingsUpiName" placeholder="Your Name">
+                        </div>
+                        <button class="btn btn-assign" onclick="updateUpiSettings()">💾 Save Settings</button>
+                    </div>
+                    <div style="margin-top: 20px; padding: 16px; background: rgba(168, 85, 247, 0.1); border-radius: 12px;">
+                        <p style="font-size: 14px; color: rgba(255,255,255,0.7);">
+                            <strong>Current UPI ID:</strong> <span id="currentUpiId" style="color: #a855f7;">-</span><br>
+                            <strong>Display Name:</strong> <span id="currentUpiName" style="color: #a855f7;">-</span>
+                        </p>
                     </div>
                 </div>
             </div>
@@ -1015,6 +1044,42 @@ def admin_page():
             loadData();
         }
         
+        async function loadSettings() {
+            try {
+                const res = await fetch('/api/admin/settings');
+                const settings = await res.json();
+                document.getElementById('settingsUpiId').value = settings.upi_id || '';
+                document.getElementById('settingsUpiName').value = settings.upi_name || '';
+                document.getElementById('currentUpiId').textContent = settings.upi_id || '-';
+                document.getElementById('currentUpiName').textContent = settings.upi_name || '-';
+            } catch(e) { console.error(e); }
+        }
+        
+        async function updateUpiSettings() {
+            const upiId = document.getElementById('settingsUpiId').value;
+            const upiName = document.getElementById('settingsUpiName').value;
+            
+            if (!upiId || !upiName) {
+                alert('Please fill in both UPI ID and Display Name');
+                return;
+            }
+            
+            const res = await fetch('/api/admin/settings', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ upi_id: upiId, upi_name: upiName })
+            });
+            
+            const data = await res.json();
+            if (data.success) {
+                alert('UPI settings updated successfully!');
+                document.getElementById('currentUpiId').textContent = upiId;
+                document.getElementById('currentUpiName').textContent = upiName;
+            } else {
+                alert('Failed to update settings');
+            }
+        }
+        
         async function logout() {
             await fetch('/api/auth/logout', { method: 'POST' });
             window.location.href = '/login';
@@ -1022,6 +1087,7 @@ def admin_page():
         
         loadUserInfo();
         loadData();
+        loadSettings();
     </script>
 </body>
 </html>

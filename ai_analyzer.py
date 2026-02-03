@@ -99,12 +99,11 @@ class GeminiAnalyzer:
 - Put OI Changes: {put_oi_changes_str}
 
 ## ANALYSIS RULES:
-1. PCR < 0.7 = Bullish (more put writing, support building)
-2. PCR > 1.3 = Bearish (more call writing, resistance building)
-3. Price above VWAP = Bullish momentum
-4. Price below VWAP = Bearish momentum
-5. OI addition at strike = That strike acts as support/resistance
-6. OI reduction = Unwinding, breakout possible
+1. **Trend is Friend**: If Price is > VWAP, prioritize CALLs. If Price is < VWAP, prioritize PUTs.
+2. **Reversals require extreme data**: Only give a PUT signal during a BULLISH rally if PCR > 1.3 or there is massive Call OI addition at current levels. 
+3. **Avoid Hero Trading**: Do not try to catch the absolute top or bottom. Wait for rejection from resistance/support.
+4. **Short Covering Risk**: If price is rising fast toward a high Call OI strike, expect a breakout (short covering), NOT a reversal.
+5. **Multi-Factor Alignment**: High confidence (>80) requires: PCR alignment + Price/VWAP alignment + Significant OI support.
 
 ## RESPOND IN THIS EXACT JSON FORMAT ONLY (no other text):
 {{
@@ -114,7 +113,7 @@ class GeminiAnalyzer:
     "target_points": 30,
     "stop_loss_points": 15,
     "risk_reward_ratio": "1:2",
-    "reasoning": "Your 2-3 sentence explanation here",
+    "reasoning": "Detailed technical reasoning based on PCR, VWAP, and OI data",
     "key_levels": {{
         "support": 22900,
         "resistance": 23100
@@ -124,9 +123,9 @@ class GeminiAnalyzer:
 }}
 
 IMPORTANT:
-- Only give CALL or PUT signal if confidence > 60
-- If confidence < 60, give NEUTRAL signal
-- Be conservative - quality over quantity
+- Only give CALL or PUT signal if confidence > 65 (Increased threshold for quality)
+- Be extremely conservative on PUT signals during overall bullish sentiment.
+- If signals are conflicting (e.g., Price > VWAP but PCR is high), stay NEUTRAL.
 - Consider risk-reward ratio (minimum 1:1.5)
 - Replace example values with your actual analysis"""
 

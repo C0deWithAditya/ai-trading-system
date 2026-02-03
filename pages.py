@@ -12,43 +12,90 @@ pages_bp = Blueprint('pages', __name__)
 @pages_bp.route('/subscribe')
 @login_required
 def subscribe_page():
-    """Subscription plans page."""
+    """Subscription plans page with sidebar."""
     return '''
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Subscribe - AI Trading System</title>
+    <title>Subscription - AI Trading System</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
             font-family: 'Inter', sans-serif;
             background: linear-gradient(135deg, #0f0f1a 0%, #1a1a2e 100%);
-            min-height: 100vh; color: #fff; padding: 40px 20px;
+            min-height: 100vh; color: #fff;
         }
-        .container { max-width: 1200px; margin: 0 auto; }
-        .header { text-align: center; margin-bottom: 50px; }
-        .header h1 {
-            font-size: 36px; margin-bottom: 10px;
+        
+        /* Layout */
+        .layout { display: flex; min-height: 100vh; }
+        
+        /* Sidebar */
+        .sidebar {
+            width: 280px; background: rgba(20, 20, 35, 0.95);
+            border-right: 1px solid rgba(139, 92, 246, 0.2);
+            padding: 24px; display: flex; flex-direction: column;
+            position: fixed; height: 100vh; left: 0; top: 0;
+        }
+        .sidebar-logo {
+            display: flex; align-items: center; gap: 12px;
+            padding-bottom: 24px; border-bottom: 1px solid rgba(255,255,255,0.1);
+            margin-bottom: 24px;
+        }
+        .sidebar-logo h2 {
+            font-size: 20px;
             background: linear-gradient(135deg, #a855f7, #6366f1);
             -webkit-background-clip: text; -webkit-text-fill-color: transparent;
         }
-        .header p { color: rgba(255,255,255,0.6); }
+        
+        .user-card {
+            background: rgba(255,255,255,0.05); border-radius: 16px;
+            padding: 20px; margin-bottom: 24px; text-align: center;
+        }
+        .user-avatar {
+            width: 64px; height: 64px; border-radius: 50%;
+            background: linear-gradient(135deg, #a855f7, #6366f1);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 24px; font-weight: 700; margin: 0 auto 12px;
+        }
+        .user-name { font-size: 18px; font-weight: 600; margin-bottom: 4px; }
+        .user-email { font-size: 12px; color: rgba(255,255,255,0.5); margin-bottom: 12px; }
+        .wallet-balance {
+            background: rgba(0, 210, 106, 0.15); color: #00d26a;
+            padding: 8px 16px; border-radius: 20px; font-weight: 600;
+            display: inline-block;
+        }
+        
+        .nav-menu { flex: 1; }
+        .nav-item {
+            display: flex; align-items: center; gap: 12px;
+            padding: 14px 16px; border-radius: 12px; color: rgba(255,255,255,0.7);
+            text-decoration: none; margin-bottom: 8px; transition: all 0.2s;
+        }
+        .nav-item:hover { background: rgba(255,255,255,0.05); color: #fff; }
+        .nav-item.active { background: rgba(168, 85, 247, 0.2); color: #a855f7; }
+        .nav-item.danger { color: #ff4757; }
+        .nav-item.danger:hover { background: rgba(255, 71, 87, 0.1); }
+        .nav-icon { font-size: 18px; }
+        
+        /* Main Content */
+        .main-content { flex: 1; margin-left: 280px; padding: 24px; }
+        
+        .page-header { margin-bottom: 30px; }
+        .page-title { font-size: 28px; font-weight: 700; }
+        .page-subtitle { color: rgba(255,255,255,0.6); margin-top: 8px; }
+        
         .wallet-card {
-            background: rgba(30, 30, 50, 0.9); padding: 20px 30px;
+            background: rgba(30, 30, 50, 0.9); padding: 24px 30px;
             border-radius: 16px; display: flex; justify-content: space-between;
-            align-items: center; margin-bottom: 40px;
+            align-items: center; margin-bottom: 30px;
             border: 1px solid rgba(139, 92, 246, 0.3);
         }
-        .wallet-balance { font-size: 32px; font-weight: 700; color: #00d26a; }
-        .wallet-label { color: rgba(255,255,255,0.6); font-size: 14px; }
-        .add-money-btn {
-            padding: 12px 24px; background: linear-gradient(135deg, #00d26a, #00a854);
-            border: none; border-radius: 10px; color: #fff; font-weight: 600;
-            cursor: pointer; font-size: 14px;
-        }
+        .wallet-amount { font-size: 36px; font-weight: 700; color: #00d26a; }
+        .wallet-label { color: rgba(255,255,255,0.6); font-size: 14px; margin-bottom: 4px; }
+        
         .plans-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; }
         .plan-card {
             background: rgba(30, 30, 50, 0.9); border-radius: 20px; padding: 30px;
@@ -68,19 +115,15 @@ def subscribe_page():
         .plan-features { list-style: none; margin: 24px 0; text-align: left; }
         .plan-features li { padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.05); color: rgba(255,255,255,0.8); }
         .plan-features li::before { content: "✓ "; color: #00d26a; font-weight: bold; }
-        .plan-btn {
+        
+        .btn {
             width: 100%; padding: 14px; border: none; border-radius: 10px;
             font-size: 16px; font-weight: 600; cursor: pointer; transition: all 0.3s;
         }
-        .plan-btn.primary {
-            background: linear-gradient(135deg, #a855f7, #6366f1); color: #fff;
-        }
-        .plan-btn.secondary {
-            background: rgba(255,255,255,0.1); color: #fff;
-        }
-        .plan-btn:hover { transform: scale(1.02); }
-        .back-link { text-align: center; margin-top: 40px; }
-        .back-link a { color: #a855f7; text-decoration: none; }
+        .btn-primary { background: linear-gradient(135deg, #a855f7, #6366f1); color: #fff; }
+        .btn-secondary { background: rgba(255,255,255,0.1); color: #fff; }
+        .btn-green { background: linear-gradient(135deg, #00d26a, #00a854); color: #fff; }
+        .btn:hover { transform: scale(1.02); }
         
         /* Modal */
         .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); align-items: center; justify-content: center; z-index: 1000; }
@@ -99,42 +142,81 @@ def subscribe_page():
             border: 1px solid rgba(255,255,255,0.1); border-radius: 10px;
             color: #fff; font-size: 16px; outline: none;
         }
+        .form-group input:focus { border-color: #a855f7; }
         .upi-box {
             background: rgba(168, 85, 247, 0.1); padding: 20px; border-radius: 12px;
             text-align: center; margin: 20px 0;
         }
         .upi-id { font-size: 18px; font-weight: 600; color: #a855f7; margin: 10px 0; }
-        .upi-btn {
-            display: inline-block; padding: 14px 30px;
-            background: linear-gradient(135deg, #00d26a, #00a854);
-            border-radius: 10px; color: #fff; font-weight: 600;
-            text-decoration: none; margin-top: 10px;
+        
+        @media (max-width: 1024px) {
+            .sidebar { width: 80px; padding: 16px; }
+            .sidebar-logo h2, .user-name, .user-email, .nav-item span { display: none; }
+            .main-content { margin-left: 80px; }
+            .plans-grid { grid-template-columns: 1fr; }
         }
-        @media (max-width: 768px) { .plans-grid { grid-template-columns: 1fr; } }
     </style>
 </head>
 <body>
-    <div class="container">
-        <div class="header">
-            <h1>💎 Upgrade Your Trading</h1>
-            <p>Choose a plan that fits your trading needs</p>
-        </div>
-        
-        <div class="wallet-card">
-            <div>
-                <div class="wallet-label">💰 Wallet Balance</div>
-                <div class="wallet-balance" id="walletBalance">₹0</div>
+    <div class="layout">
+        <!-- Sidebar -->
+        <nav class="sidebar">
+            <div class="sidebar-logo">
+                <span style="font-size: 28px;">🤖</span>
+                <h2>Trading AI</h2>
             </div>
-            <button class="add-money-btn" onclick="openAddMoneyModal()">+ Add Money</button>
-        </div>
+            
+            <div class="user-card">
+                <div class="user-avatar" id="userAvatar">U</div>
+                <div class="user-name" id="userName">User</div>
+                <div class="user-email" id="userEmail">user@example.com</div>
+                <div class="wallet-balance" id="sidebarWallet">₹0</div>
+            </div>
+            
+            <div class="nav-menu">
+                <a href="/wallet" class="nav-item">
+                    <span class="nav-icon">💰</span>
+                    <span>My Wallet</span>
+                </a>
+                <a href="/subscribe" class="nav-item active">
+                    <span class="nav-icon">💎</span>
+                    <span>Subscription</span>
+                </a>
+                <a href="/admin" class="nav-item" id="adminLink" style="display: none;">
+                    <span class="nav-icon">🔐</span>
+                    <span>Admin Panel</span>
+                </a>
+                <a href="/" class="nav-item">
+                    <span class="nav-icon">📊</span>
+                    <span>Dashboard</span>
+                </a>
+            </div>
+            
+            <a href="#" class="nav-item danger" onclick="logout()">
+                <span class="nav-icon">🚪</span>
+                <span>Logout</span>
+            </a>
+        </nav>
         
-        <div class="plans-grid" id="plansGrid">
-            <!-- Plans will be loaded here -->
-        </div>
-        
-        <div class="back-link">
-            <a href="/">← Back to Dashboard</a>
-        </div>
+        <!-- Main Content -->
+        <main class="main-content">
+            <div class="page-header">
+                <h1 class="page-title">💎 Subscription Plans</h1>
+                <p class="page-subtitle">Choose a plan that fits your trading needs</p>
+            </div>
+            
+            <div class="wallet-card">
+                <div>
+                    <div class="wallet-label">💰 Wallet Balance</div>
+                    <div class="wallet-amount" id="walletBalance">₹0</div>
+                </div>
+                <button class="btn btn-green" style="width: auto; padding: 14px 30px;" onclick="openAddMoneyModal()">+ Add Money</button>
+            </div>
+            
+            <div class="plans-grid" id="plansGrid">
+                <!-- Plans will be loaded here -->
+            </div>
+        </main>
     </div>
     
     <!-- Add Money Modal -->
@@ -159,31 +241,43 @@ def subscribe_page():
             </div>
             
             <div class="upi-box" id="upiBox" style="display: none;">
-                <p>📱 Scan QR or Pay via UPI</p>
+                <p>📱 Pay via UPI</p>
                 <div class="upi-id" id="upiIdDisplay">adityagen.lko@oksbi</div>
                 <p style="color: rgba(255,255,255,0.6); font-size: 14px;">Pay to: Aditya Verma</p>
-                <a href="#" id="upiLink" class="upi-btn">Open UPI App to Pay</a>
+                <a href="#" id="upiLink" class="btn btn-green" style="display: inline-block; width: auto; margin-top: 10px; padding: 14px 30px;">Open UPI App to Pay</a>
                 <p style="margin-top: 15px; font-size: 12px; color: rgba(255,255,255,0.5);">
                     After payment, it will be verified by admin and credited to your wallet.
                 </p>
             </div>
             
-            <button class="plan-btn primary" onclick="createPaymentRequest()" id="proceedBtn">
+            <button class="btn btn-primary" onclick="createPaymentRequest()" id="proceedBtn">
                 Proceed to Pay
             </button>
         </div>
     </div>
     
     <script>
-        // Load user data
-        async function loadData() {
-            const userRes = await fetch('/api/auth/me');
-            const user = await userRes.json();
-            document.getElementById('walletBalance').textContent = '₹' + (user.wallet_balance || 0).toLocaleString();
-            document.getElementById('paymentName').value = user.name || '';
-            document.getElementById('paymentPhone').value = user.phone || '';
-            
-            // Load plans
+        async function loadUserInfo() {
+            try {
+                const res = await fetch('/api/auth/me');
+                const user = await res.json();
+                
+                const initials = (user.name || 'U').split(' ').map(n => n[0]).join('').toUpperCase();
+                document.getElementById('userAvatar').textContent = initials;
+                document.getElementById('userName').textContent = user.name || 'User';
+                document.getElementById('userEmail').textContent = user.email || '';
+                document.getElementById('sidebarWallet').textContent = '₹' + (user.wallet_balance || 0).toLocaleString();
+                document.getElementById('walletBalance').textContent = '₹' + (user.wallet_balance || 0).toLocaleString();
+                document.getElementById('paymentName').value = user.name || '';
+                document.getElementById('paymentPhone').value = user.phone || '';
+                
+                if (user.is_admin) {
+                    document.getElementById('adminLink').style.display = 'flex';
+                }
+            } catch(e) { console.error(e); }
+        }
+        
+        async function loadPlans() {
             const plansRes = await fetch('/api/subscription/plans');
             const plans = await plansRes.json();
             
@@ -195,7 +289,7 @@ def subscribe_page():
                     <ul class="plan-features">
                         ${plan.features.map(f => `<li>${f}</li>`).join('')}
                     </ul>
-                    <button class="plan-btn ${key === 'premium' ? 'primary' : 'secondary'}"
+                    <button class="btn ${key === 'premium' ? 'btn-primary' : 'btn-secondary'}"
                             onclick="purchasePlan('${key}', ${plan.price})"
                             ${plan.price === 0 ? 'disabled' : ''}>
                         ${plan.price === 0 ? 'Current Plan' : 'Subscribe Now'}
@@ -268,7 +362,13 @@ def subscribe_page():
             }
         }
         
-        loadData();
+        async function logout() {
+            await fetch('/api/auth/logout', { method: 'POST' });
+            window.location.href = '/login';
+        }
+        
+        loadUserInfo();
+        loadPlans();
     </script>
 </body>
 </html>
@@ -278,77 +378,208 @@ def subscribe_page():
 @pages_bp.route('/wallet')
 @login_required
 def wallet_page():
-    """User wallet page."""
+    """User wallet page with sidebar."""
     return '''
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Wallet - AI Trading System</title>
+    <title>My Wallet - AI Trading System</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
             font-family: 'Inter', sans-serif;
             background: linear-gradient(135deg, #0f0f1a 0%, #1a1a2e 100%);
-            min-height: 100vh; color: #fff; padding: 40px 20px;
+            min-height: 100vh; color: #fff;
         }
-        .container { max-width: 800px; margin: 0 auto; }
-        .card {
-            background: rgba(30, 30, 50, 0.9); border-radius: 20px; padding: 30px;
+        
+        .layout { display: flex; min-height: 100vh; }
+        
+        .sidebar {
+            width: 280px; background: rgba(20, 20, 35, 0.95);
+            border-right: 1px solid rgba(139, 92, 246, 0.2);
+            padding: 24px; display: flex; flex-direction: column;
+            position: fixed; height: 100vh; left: 0; top: 0;
+        }
+        .sidebar-logo {
+            display: flex; align-items: center; gap: 12px;
+            padding-bottom: 24px; border-bottom: 1px solid rgba(255,255,255,0.1);
+            margin-bottom: 24px;
+        }
+        .sidebar-logo h2 {
+            font-size: 20px;
+            background: linear-gradient(135deg, #a855f7, #6366f1);
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+        }
+        
+        .user-card {
+            background: rgba(255,255,255,0.05); border-radius: 16px;
+            padding: 20px; margin-bottom: 24px; text-align: center;
+        }
+        .user-avatar {
+            width: 64px; height: 64px; border-radius: 50%;
+            background: linear-gradient(135deg, #a855f7, #6366f1);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 24px; font-weight: 700; margin: 0 auto 12px;
+        }
+        .user-name { font-size: 18px; font-weight: 600; margin-bottom: 4px; }
+        .user-email { font-size: 12px; color: rgba(255,255,255,0.5); margin-bottom: 12px; }
+        .wallet-balance {
+            background: rgba(0, 210, 106, 0.15); color: #00d26a;
+            padding: 8px 16px; border-radius: 20px; font-weight: 600;
+            display: inline-block;
+        }
+        
+        .nav-menu { flex: 1; }
+        .nav-item {
+            display: flex; align-items: center; gap: 12px;
+            padding: 14px 16px; border-radius: 12px; color: rgba(255,255,255,0.7);
+            text-decoration: none; margin-bottom: 8px; transition: all 0.2s;
+        }
+        .nav-item:hover { background: rgba(255,255,255,0.05); color: #fff; }
+        .nav-item.active { background: rgba(168, 85, 247, 0.2); color: #a855f7; }
+        .nav-item.danger { color: #ff4757; }
+        .nav-item.danger:hover { background: rgba(255, 71, 87, 0.1); }
+        .nav-icon { font-size: 18px; }
+        
+        .main-content { flex: 1; margin-left: 280px; padding: 24px; }
+        
+        .page-header { margin-bottom: 30px; }
+        .page-title { font-size: 28px; font-weight: 700; }
+        
+        .balance-card {
+            background: rgba(30, 30, 50, 0.9); border-radius: 20px; padding: 40px;
             border: 1px solid rgba(139, 92, 246, 0.3); margin-bottom: 24px;
+            text-align: center;
         }
-        .balance-card { text-align: center; }
-        .balance-label { color: rgba(255,255,255,0.6); font-size: 14px; }
-        .balance-amount { font-size: 48px; font-weight: 700; color: #00d26a; margin: 10px 0; }
-        .btn-group { display: flex; gap: 16px; justify-content: center; margin-top: 20px; }
+        .balance-label { color: rgba(255,255,255,0.6); font-size: 16px; }
+        .balance-amount { font-size: 56px; font-weight: 700; color: #00d26a; margin: 16px 0; }
+        .btn-group { display: flex; gap: 16px; justify-content: center; margin-top: 24px; }
         .btn {
             padding: 14px 30px; border: none; border-radius: 10px;
             font-size: 16px; font-weight: 600; cursor: pointer; text-decoration: none;
+            transition: transform 0.2s;
         }
-        .btn-primary { background: linear-gradient(135deg, #a855f7, #6366f1); color: #fff; }
-        .btn-secondary { background: rgba(255,255,255,0.1); color: #fff; }
-        .section-title { font-size: 18px; margin-bottom: 16px; }
+        .btn:hover { transform: scale(1.02); }
+        .btn-primary { background: linear-gradient(135deg, #00d26a, #00a854); color: #fff; }
+        .btn-secondary { background: linear-gradient(135deg, #a855f7, #6366f1); color: #fff; }
+        
+        .card {
+            background: rgba(30, 30, 50, 0.9); border-radius: 20px; padding: 24px;
+            border: 1px solid rgba(139, 92, 246, 0.2); margin-bottom: 24px;
+        }
+        .card-title { font-size: 18px; font-weight: 600; margin-bottom: 16px; }
+        
         .transaction {
-            display: flex; justify-content: space-between; padding: 16px;
-            border-bottom: 1px solid rgba(255,255,255,0.05);
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 16px; border-radius: 12px; margin-bottom: 8px;
+            background: rgba(255,255,255,0.02);
         }
-        .transaction:last-child { border-bottom: none; }
-        .tx-type { font-size: 14px; color: rgba(255,255,255,0.6); }
-        .tx-amount { font-weight: 600; }
+        .transaction:hover { background: rgba(255,255,255,0.05); }
+        .tx-desc { font-weight: 500; }
+        .tx-date { font-size: 12px; color: rgba(255,255,255,0.5); margin-top: 4px; }
+        .tx-amount { font-size: 18px; font-weight: 600; }
         .tx-amount.credit { color: #00d26a; }
         .tx-amount.debit { color: #ff4757; }
-        .back-link { text-align: center; margin-top: 20px; }
-        .back-link a { color: #a855f7; text-decoration: none; }
+        
+        .empty-state {
+            text-align: center; padding: 40px; color: rgba(255,255,255,0.5);
+        }
+        
+        @media (max-width: 1024px) {
+            .sidebar { width: 80px; padding: 16px; }
+            .sidebar-logo h2, .user-name, .user-email, .nav-item span { display: none; }
+            .main-content { margin-left: 80px; }
+        }
     </style>
 </head>
 <body>
-    <div class="container">
-        <div class="card balance-card">
-            <div class="balance-label">💰 Available Balance</div>
-            <div class="balance-amount" id="balance">₹0</div>
-            <div class="btn-group">
-                <a href="/subscribe" class="btn btn-primary">+ Add Money</a>
-                <a href="/subscribe" class="btn btn-secondary">Subscribe</a>
+    <div class="layout">
+        <!-- Sidebar -->
+        <nav class="sidebar">
+            <div class="sidebar-logo">
+                <span style="font-size: 28px;">🤖</span>
+                <h2>Trading AI</h2>
             </div>
-        </div>
-        
-        <div class="card">
-            <h3 class="section-title">📋 Recent Transactions</h3>
-            <div id="transactions">
-                <p style="text-align: center; color: rgba(255,255,255,0.5); padding: 20px;">
-                    No transactions yet
-                </p>
+            
+            <div class="user-card">
+                <div class="user-avatar" id="userAvatar">U</div>
+                <div class="user-name" id="userName">User</div>
+                <div class="user-email" id="userEmail">user@example.com</div>
+                <div class="wallet-balance" id="sidebarWallet">₹0</div>
             </div>
-        </div>
+            
+            <div class="nav-menu">
+                <a href="/wallet" class="nav-item active">
+                    <span class="nav-icon">💰</span>
+                    <span>My Wallet</span>
+                </a>
+                <a href="/subscribe" class="nav-item">
+                    <span class="nav-icon">💎</span>
+                    <span>Subscription</span>
+                </a>
+                <a href="/admin" class="nav-item" id="adminLink" style="display: none;">
+                    <span class="nav-icon">🔐</span>
+                    <span>Admin Panel</span>
+                </a>
+                <a href="/" class="nav-item">
+                    <span class="nav-icon">📊</span>
+                    <span>Dashboard</span>
+                </a>
+            </div>
+            
+            <a href="#" class="nav-item danger" onclick="logout()">
+                <span class="nav-icon">🚪</span>
+                <span>Logout</span>
+            </a>
+        </nav>
         
-        <div class="back-link">
-            <a href="/">← Back to Dashboard</a>
-        </div>
+        <!-- Main Content -->
+        <main class="main-content">
+            <div class="page-header">
+                <h1 class="page-title">💰 My Wallet</h1>
+            </div>
+            
+            <div class="balance-card">
+                <div class="balance-label">Available Balance</div>
+                <div class="balance-amount" id="balance">₹0</div>
+                <div class="btn-group">
+                    <a href="/subscribe" class="btn btn-primary">+ Add Money</a>
+                    <a href="/subscribe" class="btn btn-secondary">💎 Subscribe</a>
+                </div>
+            </div>
+            
+            <div class="card">
+                <h3 class="card-title">📋 Transaction History</h3>
+                <div id="transactions">
+                    <div class="empty-state">
+                        No transactions yet
+                    </div>
+                </div>
+            </div>
+        </main>
     </div>
     
     <script>
+        async function loadUserInfo() {
+            try {
+                const res = await fetch('/api/auth/me');
+                const user = await res.json();
+                
+                const initials = (user.name || 'U').split(' ').map(n => n[0]).join('').toUpperCase();
+                document.getElementById('userAvatar').textContent = initials;
+                document.getElementById('userName').textContent = user.name || 'User';
+                document.getElementById('userEmail').textContent = user.email || '';
+                document.getElementById('sidebarWallet').textContent = '₹' + (user.wallet_balance || 0).toLocaleString();
+                
+                if (user.is_admin) {
+                    document.getElementById('adminLink').style.display = 'flex';
+                }
+            } catch(e) { console.error(e); }
+        }
+        
         async function loadWallet() {
             const res = await fetch('/api/wallet/balance');
             const data = await res.json();
@@ -359,8 +590,8 @@ def wallet_page():
                 document.getElementById('transactions').innerHTML = data.transactions.map(tx => `
                     <div class="transaction">
                         <div>
-                            <div>${tx.description || (tx.type === 'credit' ? 'Money Added' : 'Subscription')}</div>
-                            <div class="tx-type">${new Date(tx.timestamp).toLocaleString()}</div>
+                            <div class="tx-desc">${tx.description || (tx.type === 'credit' ? 'Money Added' : 'Subscription Purchase')}</div>
+                            <div class="tx-date">${new Date(tx.timestamp).toLocaleString()}</div>
                         </div>
                         <div class="tx-amount ${tx.type}">
                             ${tx.type === 'credit' ? '+' : '-'}₹${tx.amount.toLocaleString()}
@@ -369,6 +600,13 @@ def wallet_page():
                 `).join('');
             }
         }
+        
+        async function logout() {
+            await fetch('/api/auth/logout', { method: 'POST' });
+            window.location.href = '/login';
+        }
+        
+        loadUserInfo();
         loadWallet();
     </script>
 </body>

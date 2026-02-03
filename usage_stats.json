@@ -1,0 +1,25 @@
+{
+  "last_updated": "2026-02-03T10:40:20.554866",
+  "history": {
+    "2026-01-31": {
+      "date": "2026-01-31",
+      "api_calls": 0,
+      "input_tokens": 0,
+      "output_tokens": 0,
+      "successful_calls": 0,
+      "failed_calls": 0,
+      "signals_generated": 0,
+      "alerts_sent": 0
+    },
+    "2026-02-03": {
+      "date": "2026-02-03",
+      "api_calls": 130,
+      "input_tokens": 58570,
+      "output_tokens": 17838,
+      "successful_calls": 119,
+      "failed_calls": 11,
+      "signals_generated": 118,
+      "alerts_sent": 40
+    }
+  }
+}

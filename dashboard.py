@@ -25,6 +25,19 @@ from index_config import get_index_manager, AVAILABLE_INDICES
 
 app = Flask(__name__)
 
+# Register authentication blueprints
+try:
+    from auth_routes import auth_bp, get_current_user, login_required
+    from pages import pages_bp
+    app.register_blueprint(auth_bp)
+    app.register_blueprint(pages_bp)
+    AUTH_ENABLED = True
+except ImportError as e:
+    print(f"Auth not enabled: {e}")
+    AUTH_ENABLED = False
+    def get_current_user(): return {"is_admin": True, "subscription": "pro"}
+    def login_required(f): return f
+
 # Global state for dashboard
 dashboard_state = {
     "signals": [],
@@ -183,6 +196,48 @@ DASHBOARD_HTML = """
             50% { opacity: 0.5; transform: scale(1.2); }
         }
         
+        /* User Menu */
+        .user-menu { position: relative; }
+        .user-btn {
+            display: flex; align-items: center; gap: 10px;
+            padding: 8px 16px; background: var(--bg-secondary);
+            border: 1px solid var(--border-color); border-radius: 12px;
+            cursor: pointer; font-size: 14px; color: var(--text-primary);
+        }
+        .user-btn:hover { border-color: var(--accent-purple); }
+        .user-avatar {
+            width: 32px; height: 32px; border-radius: 50%;
+            background: linear-gradient(135deg, var(--accent-purple), var(--accent-blue));
+            display: flex; align-items: center; justify-content: center;
+            font-weight: 600; font-size: 14px;
+        }
+        .user-dropdown {
+            position: absolute; top: 100%; right: 0; margin-top: 8px;
+            background: var(--bg-card); border: 1px solid var(--border-color);
+            border-radius: 12px; min-width: 220px; display: none; z-index: 100;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+        }
+        .user-dropdown.active { display: block; }
+        .user-dropdown-item {
+            display: flex; align-items: center; gap: 10px;
+            padding: 12px 16px; color: var(--text-primary);
+            text-decoration: none; transition: background 0.2s;
+        }
+        .user-dropdown-item:hover { background: rgba(255,255,255,0.05); }
+        .user-dropdown-item.danger { color: var(--accent-red); }
+        .user-info { padding: 16px; border-bottom: 1px solid var(--border-color); }
+        .user-email { font-size: 12px; color: var(--text-secondary); }
+        .wallet-badge { 
+            background: rgba(0, 210, 106, 0.15); color: var(--accent-green);
+            padding: 2px 8px; border-radius: 8px; font-size: 12px; font-weight: 600;
+        }
+        .sub-badge {
+            padding: 2px 8px; border-radius: 8px; font-size: 10px; font-weight: 600; text-transform: uppercase;
+        }
+        .sub-free { background: rgba(255,255,255,0.1); color: var(--text-secondary); }
+        .sub-premium { background: rgba(168, 85, 247, 0.2); color: #a855f7; }
+        .sub-pro { background: rgba(255, 193, 7, 0.2); color: #ffc107; }
+        
         /* Index Toggles */
         .index-toggles { display: flex; gap: 8px; flex-wrap: wrap; }
         .index-toggle {
@@ -327,6 +382,28 @@ DASHBOARD_HTML = """
                 <div id="status-badge" class="status-badge status-stopped">
                     <span class="pulse pulse-red"></span>
                     <span id="status-text">System Stopped</span>
+                </div>
+                
+                <!-- User Menu -->
+                <div class="user-menu">
+                    <button class="user-btn" onclick="toggleUserMenu()">
+                        <div class="user-avatar" id="user-avatar">?</div>
+                        <span id="user-name">User</span>
+                        <span class="sub-badge sub-free" id="user-sub">FREE</span>
+                    </button>
+                    <div class="user-dropdown" id="user-dropdown">
+                        <div class="user-info">
+                            <div id="user-fullname" style="font-weight: 600;">User</div>
+                            <div class="user-email" id="user-email">user@example.com</div>
+                            <div style="margin-top: 8px;">
+                                <span class="wallet-badge" id="user-wallet">₹0</span>
+                            </div>
+                        </div>
+                        <a href="/wallet" class="user-dropdown-item">💰 My Wallet</a>
+                        <a href="/subscribe" class="user-dropdown-item">💎 Subscription</a>
+                        <a href="/admin" class="user-dropdown-item" id="admin-link" style="display: none;">🔐 Admin Panel</a>
+                        <a href="#" class="user-dropdown-item danger" onclick="logout()">🚪 Logout</a>
+                    </div>
                 </div>
             </div>
         </header>
@@ -861,6 +938,55 @@ DASHBOARD_HTML = """
             }
         }
         
+        // User Menu Functions
+        function toggleUserMenu() {
+            document.getElementById('user-dropdown').classList.toggle('active');
+        }
+        
+        // Close dropdown when clicking outside
+        document.addEventListener('click', function(e) {
+            if (!e.target.closest('.user-menu')) {
+                document.getElementById('user-dropdown').classList.remove('active');
+            }
+        });
+        
+        async function loadUserData() {
+            try {
+                const res = await fetch('/api/auth/me');
+                if (!res.ok) {
+                    window.location.href = '/login';
+                    return;
+                }
+                const user = await res.json();
+                
+                // Update UI
+                const initials = (user.name || 'U').split(' ').map(n => n[0]).join('').toUpperCase();
+                document.getElementById('user-avatar').textContent = initials;
+                document.getElementById('user-name').textContent = user.name || 'User';
+                document.getElementById('user-fullname').textContent = user.name || 'User';
+                document.getElementById('user-email').textContent = user.email || '';
+                document.getElementById('user-wallet').textContent = '₹' + (user.wallet_balance || 0).toLocaleString();
+                
+                // Subscription badge
+                const sub = user.subscription || 'free';
+                const subEl = document.getElementById('user-sub');
+                subEl.textContent = sub.toUpperCase();
+                subEl.className = 'sub-badge sub-' + sub;
+                
+                // Show admin link if admin
+                if (user.is_admin) {
+                    document.getElementById('admin-link').style.display = 'flex';
+                }
+            } catch (e) {
+                console.error('Error loading user:', e);
+            }
+        }
+        
+        async function logout() {
+            await fetch('/api/auth/logout', { method: 'POST' });
+            window.location.href = '/login';
+        }
+        
         // Initialize and start - wait for everything to be ready
         function startApp() {
             // Check if library is loaded
@@ -871,6 +997,7 @@ DASHBOARD_HTML = """
             }
             
             try {
+                loadUserData(); // Load user data
                 initializeChart();
                 fetchState();
                 setInterval(fetchState, 2000);
@@ -897,6 +1024,12 @@ DASHBOARD_HTML = """
 @app.route('/')
 def dashboard():
     """Render the dashboard."""
+    # Check if user is logged in
+    if AUTH_ENABLED:
+        user = get_current_user()
+        if not user:
+            from flask import redirect
+            return redirect('/login')
     return render_template_string(DASHBOARD_HTML)
 
 

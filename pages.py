@@ -379,7 +379,7 @@ def wallet_page():
 @pages_bp.route('/admin')
 @admin_required
 def admin_page():
-    """Admin panel page."""
+    """Admin panel page with sidebar."""
     return '''
 <!DOCTYPE html>
 <html lang="en">
@@ -393,199 +393,319 @@ def admin_page():
         body {
             font-family: 'Inter', sans-serif;
             background: linear-gradient(135deg, #0f0f1a 0%, #1a1a2e 100%);
-            min-height: 100vh; color: #fff; padding: 20px;
+            min-height: 100vh; color: #fff;
         }
-        .container { max-width: 1400px; margin: 0 auto; }
-        .header {
-            display: flex; justify-content: space-between; align-items: center;
-            padding: 20px 0; margin-bottom: 30px; border-bottom: 1px solid rgba(255,255,255,0.1);
+        
+        /* Layout */
+        .layout { display: flex; min-height: 100vh; }
+        
+        /* Sidebar */
+        .sidebar {
+            width: 280px; background: rgba(20, 20, 35, 0.95);
+            border-right: 1px solid rgba(139, 92, 246, 0.2);
+            padding: 24px; display: flex; flex-direction: column;
+            position: fixed; height: 100vh; left: 0; top: 0;
         }
-        .header h1 {
-            font-size: 28px;
+        .sidebar-logo {
+            display: flex; align-items: center; gap: 12px;
+            padding-bottom: 24px; border-bottom: 1px solid rgba(255,255,255,0.1);
+            margin-bottom: 24px;
+        }
+        .sidebar-logo h2 {
+            font-size: 20px;
             background: linear-gradient(135deg, #ff4757, #ff6b81);
             -webkit-background-clip: text; -webkit-text-fill-color: transparent;
         }
-        .tabs { display: flex; gap: 8px; margin-bottom: 30px; }
-        .tab {
-            padding: 12px 24px; background: rgba(255,255,255,0.05);
-            border: none; border-radius: 10px; color: #fff;
-            cursor: pointer; font-size: 14px; font-weight: 500;
+        
+        /* User Info Card */
+        .user-card {
+            background: rgba(255,255,255,0.05); border-radius: 16px;
+            padding: 20px; margin-bottom: 24px; text-align: center;
         }
-        .tab.active { background: linear-gradient(135deg, #a855f7, #6366f1); }
-        .card {
-            background: rgba(30, 30, 50, 0.9); border-radius: 16px; padding: 24px;
-            border: 1px solid rgba(139, 92, 246, 0.3); margin-bottom: 20px;
+        .user-avatar {
+            width: 64px; height: 64px; border-radius: 50%;
+            background: linear-gradient(135deg, #a855f7, #6366f1);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 24px; font-weight: 700; margin: 0 auto 12px;
         }
-        .card-title { font-size: 18px; margin-bottom: 20px; }
-        table { width: 100%; border-collapse: collapse; }
-        th, td { padding: 12px 16px; text-align: left; border-bottom: 1px solid rgba(255,255,255,0.05); }
-        th { color: rgba(255,255,255,0.6); font-weight: 500; font-size: 12px; text-transform: uppercase; }
-        .badge {
-            padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 500;
+        .user-name { font-size: 18px; font-weight: 600; margin-bottom: 4px; }
+        .user-email { font-size: 12px; color: rgba(255,255,255,0.5); margin-bottom: 12px; }
+        .wallet-balance {
+            background: rgba(0, 210, 106, 0.15); color: #00d26a;
+            padding: 8px 16px; border-radius: 20px; font-weight: 600;
+            display: inline-block;
         }
-        .badge-pending { background: rgba(255, 193, 7, 0.2); color: #ffc107; }
-        .badge-approved { background: rgba(0, 210, 106, 0.2); color: #00d26a; }
-        .badge-rejected { background: rgba(255, 71, 87, 0.2); color: #ff4757; }
-        .btn {
-            padding: 8px 16px; border: none; border-radius: 8px;
-            font-size: 12px; font-weight: 600; cursor: pointer; margin-right: 8px;
+        
+        /* Navigation */
+        .nav-menu { flex: 1; }
+        .nav-item {
+            display: flex; align-items: center; gap: 12px;
+            padding: 14px 16px; border-radius: 12px; color: rgba(255,255,255,0.7);
+            text-decoration: none; margin-bottom: 8px; transition: all 0.2s;
         }
-        .btn-approve { background: #00d26a; color: #fff; }
-        .btn-reject { background: #ff4757; color: #fff; }
-        .btn-assign { background: #a855f7; color: #fff; }
-        .section { display: none; }
-        .section.active { display: block; }
+        .nav-item:hover { background: rgba(255,255,255,0.05); color: #fff; }
+        .nav-item.active { background: rgba(168, 85, 247, 0.2); color: #a855f7; }
+        .nav-item.danger { color: #ff4757; }
+        .nav-item.danger:hover { background: rgba(255, 71, 87, 0.1); }
+        .nav-icon { font-size: 18px; }
+        
+        /* Main Content */
+        .main-content { flex: 1; margin-left: 280px; padding: 24px; }
+        
+        .page-header {
+            display: flex; justify-content: space-between; align-items: center;
+            margin-bottom: 30px;
+        }
+        .page-title { font-size: 28px; font-weight: 700; }
+        
         .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 30px; }
         .stat-card {
-            background: rgba(255,255,255,0.05); padding: 20px; border-radius: 12px; text-align: center;
+            background: rgba(30, 30, 50, 0.9); padding: 20px; border-radius: 16px;
+            border: 1px solid rgba(139, 92, 246, 0.2); text-align: center;
         }
         .stat-value { font-size: 32px; font-weight: 700; color: #a855f7; }
         .stat-label { font-size: 12px; color: rgba(255,255,255,0.6); margin-top: 4px; }
-        .back-link a { color: #a855f7; text-decoration: none; }
         
-        /* Modal */
-        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); align-items: center; justify-content: center; z-index: 1000; }
-        .modal.active { display: flex; }
-        .modal-content { background: rgba(30, 30, 50, 0.95); padding: 30px; border-radius: 20px; width: 100%; max-width: 400px; }
-        .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
-        .modal-close { background: none; border: none; color: #fff; font-size: 24px; cursor: pointer; }
+        .tabs { display: flex; gap: 8px; margin-bottom: 24px; }
+        .tab {
+            padding: 12px 24px; background: rgba(255,255,255,0.05);
+            border: none; border-radius: 10px; color: #fff;
+            cursor: pointer; font-size: 14px; font-weight: 500; transition: all 0.2s;
+        }
+        .tab:hover { background: rgba(255,255,255,0.1); }
+        .tab.active { background: linear-gradient(135deg, #a855f7, #6366f1); }
+        
+        .card {
+            background: rgba(30, 30, 50, 0.9); border-radius: 16px; padding: 24px;
+            border: 1px solid rgba(139, 92, 246, 0.2); margin-bottom: 20px;
+        }
+        .card-title { font-size: 18px; font-weight: 600; margin-bottom: 20px; }
+        
+        table { width: 100%; border-collapse: collapse; }
+        th, td { padding: 12px 16px; text-align: left; border-bottom: 1px solid rgba(255,255,255,0.05); }
+        th { color: rgba(255,255,255,0.5); font-weight: 500; font-size: 12px; text-transform: uppercase; }
+        
+        .badge { padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 500; }
+        .badge-pending { background: rgba(255, 193, 7, 0.2); color: #ffc107; }
+        .badge-approved { background: rgba(0, 210, 106, 0.2); color: #00d26a; }
+        
+        .btn {
+            padding: 8px 16px; border: none; border-radius: 8px;
+            font-size: 12px; font-weight: 600; cursor: pointer; margin-right: 8px;
+            transition: transform 0.2s;
+        }
+        .btn:hover { transform: scale(1.02); }
+        .btn-approve { background: #00d26a; color: #fff; }
+        .btn-reject { background: #ff4757; color: #fff; }
+        .btn-assign { background: #a855f7; color: #fff; }
+        
+        .section { display: none; }
+        .section.active { display: block; }
+        
         .form-group { margin-bottom: 16px; }
-        .form-group label { display: block; margin-bottom: 8px; font-size: 14px; color: rgba(255,255,255,0.8); }
+        .form-group label { display: block; margin-bottom: 8px; font-size: 14px; color: rgba(255,255,255,0.7); }
         .form-group input, .form-group select {
-            width: 100%; padding: 12px; background: rgba(255,255,255,0.05);
+            width: 100%; padding: 12px 16px; background: rgba(255,255,255,0.05);
             border: 1px solid rgba(255,255,255,0.1); border-radius: 10px;
-            color: #fff; font-size: 16px;
+            color: #fff; font-size: 14px; outline: none; transition: border-color 0.2s;
+        }
+        .form-group input:focus, .form-group select:focus {
+            border-color: #a855f7;
+        }
+        
+        @media (max-width: 1024px) {
+            .sidebar { width: 80px; padding: 16px; }
+            .sidebar-logo h2, .user-name, .user-email, .nav-item span { display: none; }
+            .user-card { padding: 12px; }
+            .wallet-balance { font-size: 10px; padding: 4px 8px; }
+            .main-content { margin-left: 80px; }
+            .stats-grid { grid-template-columns: repeat(2, 1fr); }
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <div class="header">
-            <h1>🔐 Admin Panel</h1>
-            <div class="back-link"><a href="/">← Back to Dashboard</a></div>
-        </div>
-        
-        <div class="stats-grid" id="statsGrid">
-            <div class="stat-card"><div class="stat-value" id="totalUsers">0</div><div class="stat-label">Total Users</div></div>
-            <div class="stat-card"><div class="stat-value" id="pendingApprovals">0</div><div class="stat-label">Pending Approvals</div></div>
-            <div class="stat-card"><div class="stat-value" id="pendingPayments">0</div><div class="stat-label">Pending Payments</div></div>
-            <div class="stat-card"><div class="stat-value" id="activeSubscriptions">0</div><div class="stat-label">Active Subscriptions</div></div>
-        </div>
-        
-        <div class="tabs">
-            <button class="tab active" onclick="showSection('users')">👥 Users</button>
-            <button class="tab" onclick="showSection('payments')">💳 Payments</button>
-            <button class="tab" onclick="showSection('subscriptions')">📦 Subscriptions</button>
-        </div>
-        
-        <!-- Users Section -->
-        <div id="users" class="section active">
-            <div class="card">
-                <h3 class="card-title">👥 All Users</h3>
-                <table>
-                    <thead>
-                        <tr><th>Name</th><th>Email</th><th>Phone</th><th>Status</th><th>Subscription</th><th>Wallet</th><th>Actions</th></tr>
-                    </thead>
-                    <tbody id="usersTable"></tbody>
-                </table>
+    <div class="layout">
+        <!-- Sidebar -->
+        <nav class="sidebar">
+            <div class="sidebar-logo">
+                <span style="font-size: 28px;">🔐</span>
+                <h2>Admin Panel</h2>
             </div>
-        </div>
-        
-        <!-- Payments Section -->
-        <div id="payments" class="section">
-            <div class="card">
-                <h3 class="card-title">💳 Pending Payments</h3>
-                <table>
-                    <thead>
-                        <tr><th>ID</th><th>User</th><th>Amount</th><th>Name</th><th>Phone</th><th>Date</th><th>Actions</th></tr>
-                    </thead>
-                    <tbody id="paymentsTable"></tbody>
-                </table>
+            
+            <div class="user-card">
+                <div class="user-avatar" id="userAvatar">A</div>
+                <div class="user-name" id="userName">Admin</div>
+                <div class="user-email" id="userEmail">admin@trading.ai</div>
+                <div class="wallet-balance" id="userWallet">₹0</div>
             </div>
-        </div>
+            
+            <div class="nav-menu">
+                <a href="/wallet" class="nav-item">
+                    <span class="nav-icon">💰</span>
+                    <span>My Wallet</span>
+                </a>
+                <a href="/subscribe" class="nav-item">
+                    <span class="nav-icon">💎</span>
+                    <span>Subscription</span>
+                </a>
+                <a href="/admin" class="nav-item active">
+                    <span class="nav-icon">🔐</span>
+                    <span>Admin Panel</span>
+                </a>
+                <a href="/" class="nav-item">
+                    <span class="nav-icon">📊</span>
+                    <span>Dashboard</span>
+                </a>
+            </div>
+            
+            <a href="#" class="nav-item danger" onclick="logout()">
+                <span class="nav-icon">🚪</span>
+                <span>Logout</span>
+            </a>
+        </nav>
         
-        <!-- Subscriptions Section -->
-        <div id="subscriptions" class="section">
-            <div class="card">
-                <h3 class="card-title">📦 Assign Subscription</h3>
-                <p style="color: rgba(255,255,255,0.6); margin-bottom: 20px;">
-                    Manually assign subscription to any user
-                </p>
-                <div style="display: grid; grid-template-columns: 1fr 1fr 1fr auto; gap: 16px; align-items: end;">
-                    <div class="form-group" style="margin: 0;">
-                        <label>User Email</label>
-                        <input type="email" id="assignEmail" placeholder="user@example.com">
-                    </div>
-                    <div class="form-group" style="margin: 0;">
-                        <label>Plan</label>
-                        <select id="assignPlan">
-                            <option value="premium">Premium (₹499)</option>
-                            <option value="pro">Pro (₹999)</option>
-                        </select>
-                    </div>
-                    <div class="form-group" style="margin: 0;">
-                        <label>Days</label>
-                        <input type="number" id="assignDays" value="30" min="1">
-                    </div>
-                    <button class="btn btn-assign" onclick="assignSubscription()">Assign</button>
+        <!-- Main Content -->
+        <main class="main-content">
+            <div class="page-header">
+                <h1 class="page-title">👥 User Management</h1>
+            </div>
+            
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-value" id="totalUsers">0</div>
+                    <div class="stat-label">Total Users</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="pendingApprovals">0</div>
+                    <div class="stat-label">Pending Approvals</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="pendingPayments">0</div>
+                    <div class="stat-label">Pending Payments</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="activeSubscriptions">0</div>
+                    <div class="stat-label">Active Subscriptions</div>
                 </div>
             </div>
             
-            <div class="card">
-                <h3 class="card-title">💰 Add Wallet Balance</h3>
-                <div style="display: grid; grid-template-columns: 1fr 1fr auto; gap: 16px; align-items: end;">
-                    <div class="form-group" style="margin: 0;">
-                        <label>User Email</label>
-                        <input type="email" id="walletEmail" placeholder="user@example.com">
-                    </div>
-                    <div class="form-group" style="margin: 0;">
-                        <label>Amount (₹)</label>
-                        <input type="number" id="walletAmount" placeholder="500" min="1">
-                    </div>
-                    <button class="btn btn-approve" onclick="addWalletBalance()">Add Balance</button>
+            <div class="tabs">
+                <button class="tab active" onclick="showSection('users', this)">👥 Users</button>
+                <button class="tab" onclick="showSection('payments', this)">💳 Payments</button>
+                <button class="tab" onclick="showSection('subscriptions', this)">📦 Subscriptions</button>
+            </div>
+            
+            <!-- Users Section -->
+            <div id="users" class="section active">
+                <div class="card">
+                    <h3 class="card-title">All Registered Users</h3>
+                    <table>
+                        <thead>
+                            <tr><th>Name</th><th>Email</th><th>Phone</th><th>Status</th><th>Plan</th><th>Wallet</th><th>Actions</th></tr>
+                        </thead>
+                        <tbody id="usersTable"></tbody>
+                    </table>
                 </div>
             </div>
-        </div>
+            
+            <!-- Payments Section -->
+            <div id="payments" class="section">
+                <div class="card">
+                    <h3 class="card-title">Pending Payment Approvals</h3>
+                    <table>
+                        <thead>
+                            <tr><th>ID</th><th>User</th><th>Amount</th><th>Name</th><th>Phone</th><th>Date</th><th>Actions</th></tr>
+                        </thead>
+                        <tbody id="paymentsTable"></tbody>
+                    </table>
+                </div>
+            </div>
+            
+            <!-- Subscriptions Section -->
+            <div id="subscriptions" class="section">
+                <div class="card">
+                    <h3 class="card-title">📦 Assign Subscription</h3>
+                    <p style="color: rgba(255,255,255,0.5); margin-bottom: 20px;">
+                        Manually assign subscription to any user
+                    </p>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr auto; gap: 16px; align-items: end;">
+                        <div class="form-group" style="margin: 0;">
+                            <label>User Email</label>
+                            <input type="email" id="assignEmail" placeholder="user@example.com">
+                        </div>
+                        <div class="form-group" style="margin: 0;">
+                            <label>Plan</label>
+                            <select id="assignPlan">
+                                <option value="premium">Premium (₹499)</option>
+                                <option value="pro">Pro (₹999)</option>
+                            </select>
+                        </div>
+                        <div class="form-group" style="margin: 0;">
+                            <label>Days</label>
+                            <input type="number" id="assignDays" value="30" min="1">
+                        </div>
+                        <button class="btn btn-assign" onclick="assignSubscription()">Assign</button>
+                    </div>
+                </div>
+                
+                <div class="card">
+                    <h3 class="card-title">💰 Add Wallet Balance</h3>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr auto; gap: 16px; align-items: end;">
+                        <div class="form-group" style="margin: 0;">
+                            <label>User Email</label>
+                            <input type="email" id="walletEmail" placeholder="user@example.com">
+                        </div>
+                        <div class="form-group" style="margin: 0;">
+                            <label>Amount (₹)</label>
+                            <input type="number" id="walletAmount" placeholder="500" min="1">
+                        </div>
+                        <button class="btn btn-approve" onclick="addWalletBalance()">Add Balance</button>
+                    </div>
+                </div>
+            </div>
+        </main>
     </div>
     
     <script>
         let allUsers = [];
         
+        async function loadUserInfo() {
+            try {
+                const res = await fetch('/api/auth/me');
+                const user = await res.json();
+                
+                const initials = (user.name || 'A').split(' ').map(n => n[0]).join('').toUpperCase();
+                document.getElementById('userAvatar').textContent = initials;
+                document.getElementById('userName').textContent = user.name || 'Admin';
+                document.getElementById('userEmail').textContent = user.email || '';
+                document.getElementById('userWallet').textContent = '₹' + (user.wallet_balance || 0).toLocaleString();
+            } catch(e) { console.error(e); }
+        }
+        
         async function loadData() {
-            // Load users
             const usersRes = await fetch('/api/admin/users');
             allUsers = await usersRes.json();
             
-            // Load pending payments
             const paymentsRes = await fetch('/api/admin/pending_payments');
             const payments = await paymentsRes.json();
             
-            // Update stats
             document.getElementById('totalUsers').textContent = allUsers.length;
             document.getElementById('pendingApprovals').textContent = allUsers.filter(u => !u.is_approved).length;
             document.getElementById('pendingPayments').textContent = payments.length;
             document.getElementById('activeSubscriptions').textContent = allUsers.filter(u => u.subscription !== 'free').length;
             
-            // Render users table
             document.getElementById('usersTable').innerHTML = allUsers.map(user => `
                 <tr>
                     <td>${user.name}</td>
                     <td>${user.email}</td>
                     <td>${user.phone || '-'}</td>
-                    <td>
-                        <span class="badge ${user.is_approved ? 'badge-approved' : 'badge-pending'}">
-                            ${user.is_approved ? 'Approved' : 'Pending'}
-                        </span>
-                    </td>
+                    <td><span class="badge ${user.is_approved ? 'badge-approved' : 'badge-pending'}">${user.is_approved ? 'Approved' : 'Pending'}</span></td>
                     <td>${user.subscription}</td>
                     <td>₹${(user.wallet_balance || 0).toLocaleString()}</td>
-                    <td>
-                        ${!user.is_approved ? `<button class="btn btn-approve" onclick="approveUser('${user.email}')">Approve</button>` : ''}
-                    </td>
+                    <td>${!user.is_approved ? `<button class="btn btn-approve" onclick="approveUser('${user.email}')">Approve</button>` : '-'}</td>
                 </tr>
             `).join('');
             
-            // Render payments table
             document.getElementById('paymentsTable').innerHTML = payments.length > 0 ? payments.map(p => `
                 <tr>
                     <td>${p.id}</td>
@@ -602,11 +722,11 @@ def admin_page():
             `).join('') : '<tr><td colspan="7" style="text-align: center; padding: 30px; color: rgba(255,255,255,0.5);">No pending payments</td></tr>';
         }
         
-        function showSection(name) {
+        function showSection(name, btn) {
             document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
             document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
             document.getElementById(name).classList.add('active');
-            event.target.classList.add('active');
+            btn.classList.add('active');
         }
         
         async function approveUser(email) {
@@ -631,15 +751,12 @@ def admin_page():
             const email = document.getElementById('assignEmail').value;
             const plan = document.getElementById('assignPlan').value;
             const days = document.getElementById('assignDays').value;
-            
             if (!email) { alert('Enter email'); return; }
-            
             await fetch('/api/admin/assign_subscription', {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify({ email, plan, days: parseInt(days) })
             });
-            
             alert('Subscription assigned!');
             document.getElementById('assignEmail').value = '';
             loadData();
@@ -648,21 +765,24 @@ def admin_page():
         async function addWalletBalance() {
             const email = document.getElementById('walletEmail').value;
             const amount = document.getElementById('walletAmount').value;
-            
             if (!email || !amount) { alert('Enter email and amount'); return; }
-            
             await fetch('/api/admin/add_wallet_balance', {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify({ email, amount: parseFloat(amount) })
             });
-            
             alert('Balance added!');
             document.getElementById('walletEmail').value = '';
             document.getElementById('walletAmount').value = '';
             loadData();
         }
         
+        async function logout() {
+            await fetch('/api/auth/logout', { method: 'POST' });
+            window.location.href = '/login';
+        }
+        
+        loadUserInfo();
         loadData();
     </script>
 </body>

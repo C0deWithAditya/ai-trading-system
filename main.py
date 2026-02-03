@@ -164,7 +164,8 @@ class AITradingSystem:
         """Run a single analysis cycle for all enabled indices."""
         try:
             logger.info("-" * 50)
-            logger.info(f"🔄 Analysis cycle at {datetime.now().strftime('%H:%M:%S')}")
+            ist = pytz.timezone('Asia/Kolkata')
+            logger.info(f"🔄 Analysis cycle at {datetime.now(ist).strftime('%H:%M:%S')}")
             
             # Analyze each enabled index
             enabled_indices = self.index_manager.get_enabled_indices()
@@ -413,7 +414,8 @@ class AITradingSystem:
                 if self.is_market_hours():
                     await self.run_ai_analysis_cycle()
                 else:
-                    current_time = datetime.now().strftime('%H:%M:%S')
+                    ist = pytz.timezone('Asia/Kolkata')
+                    current_time = datetime.now(ist).strftime('%H:%M:%S')
                     logger.info(f"⏸️ Market closed ({current_time}). Waiting...")
                 
                 await asyncio.sleep(SYSTEM_CONFIG.refresh_interval_seconds)

@@ -883,16 +883,16 @@ DASHBOARD_HTML = """
                     recentTradesDiv.innerHTML = data.recent_trades.map(t => {
                         const emoji = t.pnl > 0 ? '✅' : (t.pnl < 0 ? '❌' : '⏳');
                         const pnlColor = t.pnl > 0 ? 'var(--accent-green)' : (t.pnl < 0 ? 'var(--accent-red)' : 'var(--text-secondary)');
-                        const statusText = t.status === 'TARGET_HIT' ? 'Target' : (t.status === 'SL_HIT' ? 'SL' : 'Closed');
+                        const roi = ((t.pnl / t.required_capital) * 100).toFixed(2);
                         return `
-                            <div style="display: flex; flex-direction: column; gap: 4px; padding: 10px 12px; background: var(--bg-secondary); border-radius: 8px; margin-bottom: 8px; border-righ: 3px solid ${pnlColor};">
+                            <div style="display: flex; flex-direction: column; gap: 4px; padding: 10px 12px; background: var(--bg-secondary); border-radius: 8px; margin-bottom: 8px; border-right: 3px solid ${pnlColor};">
                                 <div style="display: flex; justify-content: space-between; align-items: center;">
                                     <span style="font-weight: 600;">${emoji} ${t.signal_type} ${t.index} ${t.strike}</span>
-                                    <span style="color: ${pnlColor}; font-weight: 600;">₹${t.pnl >= 0 ? '+' : ''}${(t.pnl || 0).toLocaleString()}</span>
+                                    <span style="color: ${pnlColor}; font-weight: 600;">₹${t.pnl >= 0 ? '+' : ''}${(t.pnl || 0).toLocaleString()} (${roi >= 0 ? '+' : ''}${roi}%)</span>
                                 </div>
                                 <div style="display: flex; justify-content: space-between; font-size: 11px; opacity: 0.7;">
-                                    <span>In: ₹${t.entry_premium} | Out: ₹${t.exit_premium}</span>
-                                    <span>${statusText} | Lot: ${t.lot_size}</span>
+                                    <span>In: ₹${t.entry_premium} | Out: ₹${t.exit_premium} | Cap: ₹${(t.required_capital || 0).toLocaleString()}</span>
+                                    <span>Lot: ${t.lot_size}</span>
                                 </div>
                             </div>
                         `;
@@ -906,14 +906,15 @@ DASHBOARD_HTML = """
                 if (data.open_trades && data.open_trades.length > 0) {
                     openPosDiv.innerHTML = data.open_trades.map(t => {
                         const pnlColor = t.current_pnl >= 0 ? 'var(--accent-green)' : 'var(--accent-red)';
+                        const roi = t.roi_percentage?.toFixed(2);
                         return `
-                            <div style="display: flex; flex-direction: column; gap: 4px; padding: 10px 12px; background: var(--bg-secondary); border-radius: 8px; margin-bottom: 8px; border-left: 3px solid ${t.signal_type === 'CALL' ? 'var(--accent-green)' : 'var(--accent-red)'};">
+                            <div style="display: flex; flex-direction: column; gap: 4px; padding: 10px 12px; background: var(--bg-secondary); border-radius: 8px; margin-bottom: 8px; border-left: 4px solid ${t.signal_type === 'CALL' ? 'var(--accent-green)' : 'var(--accent-red)'};">
                                 <div style="display: flex; justify-content: space-between; align-items: center;">
                                     <span style="font-weight: 600;">🔄 ${t.signal_type} ${t.index} ${t.strike}</span>
-                                    <span style="color: ${pnlColor}; font-weight: 600;">₹${t.current_pnl >= 0 ? '+' : ''}${(t.current_pnl || 0).toLocaleString()}</span>
+                                    <span style="color: ${pnlColor}; font-weight: 600;">₹${t.current_pnl >= 0 ? '+' : ''}${(t.current_pnl || 0).toLocaleString()} (${roi >= 0 ? '+' : ''}${roi}%)</span>
                                 </div>
                                 <div style="display: flex; justify-content: space-between; font-size: 11px; opacity: 0.7;">
-                                    <span>Entry: ₹${t.entry_premium} | LTP: ₹${t.current_premium?.toFixed(1)}</span>
+                                    <span>Entry: ₹${t.entry_premium} | LTP: ₹${t.current_premium?.toFixed(1)} | Cap: ₹${(t.required_capital || 0).toLocaleString()}</span>
                                     <span>Lot: ${t.lot_size} | T: +${t.target_points} | SL: -${t.stop_loss_points}</span>
                                 </div>
                             </div>

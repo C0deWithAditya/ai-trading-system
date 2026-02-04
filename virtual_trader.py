@@ -17,8 +17,11 @@ VIRTUAL_TRADES_FILE = "virtual_trades.json"
 
 # Lot sizes for different indices
 LOT_SIZES = {
-    "NIFTY": 25,
-    "BANKNIFTY": 15,
+    "NIFTY": 65,
+    "BANKNIFTY": 30,
+    "FINNIFTY": 60,
+    "MIDCPNIFTY": 120,
+    "NIFTYNXT50": 25,
     "SENSEX": 10,
 }
 
@@ -69,6 +72,8 @@ class VirtualTrade:
             'points_captured': self.points_captured,
             'pnl': self.pnl,
             'current_pnl': self.current_pnl,
+            'required_capital': self.entry_premium * self.lot_size,
+            'roi_percentage': ((self.current_pnl / (self.entry_premium * self.lot_size)) * 100) if self.entry_premium > 0 else 0,
             'highest_premium': self.highest_premium,
             'lowest_premium': self.lowest_premium,
         }
@@ -301,10 +306,12 @@ Not actual trades. 1 lot per signal.</i>
         return message
 
     def get_exit_message(self, trade: VirtualTrade) -> str:
-        """Generate a message for a trade exit."""
+        """Generate a detailed message for a trade exit."""
         emoji = "✅" if trade.pnl > 0 else "❌"
         status_text = "TARGET ACHIEVED 🎯" if trade.status == 'TARGET_HIT' else "STOP LOSS HIT 🛑"
         pnl_color = "🟢" if trade.pnl > 0 else "🔴"
+        required_cap = trade.entry_premium * trade.lot_size
+        roi = (trade.pnl / required_cap * 100) if required_cap > 0 else 0
         
         return f"""
 {emoji} <b>VIRTUAL TRADE EXIT: {status_text}</b> {emoji}
@@ -315,17 +322,19 @@ Not actual trades. 1 lot per signal.</i>
 • Signal: {trade.signal_type}
 • Strike: {trade.strike}
 • Lot Size: {trade.lot_size}
+• Capital Used: ₹{required_cap:,.2f}
 
 💰 <b>Performance:</b>
 • Entry Price: ₹{trade.entry_premium}
 • Exit Price: ₹{trade.exit_premium}
-• Points Captured: {trade.points_captured:+.1f}
-• {pnl_color} <b>P&L: ₹{trade.pnl:+,.0f}</b>
+• Points: {trade.points_captured:+.1f}
+• ROI: {roi:+.2f}%
+• {pnl_color} <b>Final P&L: ₹{trade.pnl:+,.0f}</b>
 
-⏰ Exit Time: {trade.exit_time}
+⏰ Entry: {trade.entry_time}
+⏰ Exit: {trade.exit_time}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━
-<i>*Virtual trading based on AI signals. 
-Not actual trades.</i>
+<i>*Virtual trading analysis. No actual funds used.</i>
 """
     
     def should_send_hourly_update(self) -> bool:

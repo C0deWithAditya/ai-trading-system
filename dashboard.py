@@ -883,11 +883,17 @@ DASHBOARD_HTML = """
                     recentTradesDiv.innerHTML = data.recent_trades.map(t => {
                         const emoji = t.pnl > 0 ? '✅' : (t.pnl < 0 ? '❌' : '⏳');
                         const pnlColor = t.pnl > 0 ? 'var(--accent-green)' : (t.pnl < 0 ? 'var(--accent-red)' : 'var(--text-secondary)');
-                        const statusText = t.status === 'OPEN' ? 'Open' : (t.status === 'TARGET_HIT' ? 'Target' : 'SL');
+                        const statusText = t.status === 'TARGET_HIT' ? 'Target' : (t.status === 'SL_HIT' ? 'SL' : 'Closed');
                         return `
-                            <div style="display: flex; justify-content: space-between; padding: 8px 12px; background: var(--bg-secondary); border-radius: 8px; margin-bottom: 8px;">
-                                <span>${emoji} ${t.signal_type} ${t.index} ${t.strike}</span>
-                                <span style="color: ${pnlColor}; font-weight: 600;">₹${t.pnl >= 0 ? '+' : ''}${(t.pnl || 0).toLocaleString()}</span>
+                            <div style="display: flex; flex-direction: column; gap: 4px; padding: 10px 12px; background: var(--bg-secondary); border-radius: 8px; margin-bottom: 8px; border-righ: 3px solid ${pnlColor};">
+                                <div style="display: flex; justify-content: space-between; align-items: center;">
+                                    <span style="font-weight: 600;">${emoji} ${t.signal_type} ${t.index} ${t.strike}</span>
+                                    <span style="color: ${pnlColor}; font-weight: 600;">₹${t.pnl >= 0 ? '+' : ''}${(t.pnl || 0).toLocaleString()}</span>
+                                </div>
+                                <div style="display: flex; justify-content: space-between; font-size: 11px; opacity: 0.7;">
+                                    <span>In: ₹${t.entry_premium} | Out: ₹${t.exit_premium}</span>
+                                    <span>${statusText} | Lot: ${t.lot_size}</span>
+                                </div>
                             </div>
                         `;
                     }).join('');
@@ -899,10 +905,17 @@ DASHBOARD_HTML = """
                 const openPosDiv = document.getElementById('vt-open-positions');
                 if (data.open_trades && data.open_trades.length > 0) {
                     openPosDiv.innerHTML = data.open_trades.map(t => {
+                        const pnlColor = t.current_pnl >= 0 ? 'var(--accent-green)' : 'var(--accent-red)';
                         return `
-                            <div style="display: flex; justify-content: space-between; padding: 8px 12px; background: var(--bg-secondary); border-radius: 8px; margin-bottom: 8px; border-left: 3px solid ${t.signal_type === 'CALL' ? 'var(--accent-green)' : 'var(--accent-red)'};">
-                                <span>🔄 ${t.signal_type} ${t.index} ${t.strike}</span>
-                                <span style="color: var(--text-secondary);">Entry: ₹${t.entry_premium}</span>
+                            <div style="display: flex; flex-direction: column; gap: 4px; padding: 10px 12px; background: var(--bg-secondary); border-radius: 8px; margin-bottom: 8px; border-left: 3px solid ${t.signal_type === 'CALL' ? 'var(--accent-green)' : 'var(--accent-red)'};">
+                                <div style="display: flex; justify-content: space-between; align-items: center;">
+                                    <span style="font-weight: 600;">🔄 ${t.signal_type} ${t.index} ${t.strike}</span>
+                                    <span style="color: ${pnlColor}; font-weight: 600;">₹${t.current_pnl >= 0 ? '+' : ''}${(t.current_pnl || 0).toLocaleString()}</span>
+                                </div>
+                                <div style="display: flex; justify-content: space-between; font-size: 11px; opacity: 0.7;">
+                                    <span>Entry: ₹${t.entry_premium} | LTP: ₹${t.current_premium?.toFixed(1)}</span>
+                                    <span>Lot: ${t.lot_size} | T: +${t.target_points} | SL: -${t.stop_loss_points}</span>
+                                </div>
                             </div>
                         `;
                     }).join('');

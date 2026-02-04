@@ -47,6 +47,8 @@ class VirtualTrade:
         self.pnl = data.get('pnl', 0)
         self.highest_premium = data.get('highest_premium', self.entry_premium)
         self.lowest_premium = data.get('lowest_premium', self.entry_premium)
+        self.current_premium = data.get('current_premium', self.entry_premium)
+        self.current_pnl = data.get('current_pnl', 0)
     
     def to_dict(self) -> Dict:
         return {
@@ -56,6 +58,7 @@ class VirtualTrade:
             'strike': self.strike,
             'spot_at_entry': self.spot_at_entry,
             'entry_premium': self.entry_premium,
+            'current_premium': self.current_premium,
             'lot_size': self.lot_size,
             'target_points': self.target_points,
             'stop_loss_points': self.stop_loss_points,
@@ -65,6 +68,7 @@ class VirtualTrade:
             'exit_time': self.exit_time,
             'points_captured': self.points_captured,
             'pnl': self.pnl,
+            'current_pnl': self.current_pnl,
             'highest_premium': self.highest_premium,
             'lowest_premium': self.lowest_premium,
         }
@@ -76,6 +80,9 @@ class VirtualTrade:
     
     def update_mtm(self, current_premium: float):
         """Update mark-to-market values."""
+        self.current_premium = current_premium
+        self.current_pnl = (current_premium - self.entry_premium) * self.lot_size
+        
         if current_premium > self.highest_premium:
             self.highest_premium = current_premium
         if current_premium < self.lowest_premium:
@@ -190,8 +197,9 @@ class VirtualTrader:
                 return trade
         return None
     
-    def check_and_update_trades(self, index: str, spot_price: float, option_prices: Dict[int, Dict] = None):
+    def check_and_update_trades(self, index: str, spot_price: float, option_prices: Dict[int, Dict] = None) -> List[VirtualTrade]:
         """Check open trades and update their status based on current prices."""
+        closed_trades = []
         for trade in self.trades:
             if trade.status != 'OPEN':
                 continue
@@ -213,12 +221,15 @@ class VirtualTrader:
             
             # Check target hit
             if current_premium >= trade.entry_premium + trade.target_points:
-                self.close_trade(trade.id, trade.entry_premium + trade.target_points, 'TARGET_HIT')
+                closed = self.close_trade(trade.id, trade.entry_premium + trade.target_points, 'TARGET_HIT')
+                if closed: closed_trades.append(closed)
             # Check stop loss hit
             elif current_premium <= trade.entry_premium - trade.stop_loss_points:
-                self.close_trade(trade.id, trade.entry_premium - trade.stop_loss_points, 'SL_HIT')
+                closed = self.close_trade(trade.id, trade.entry_premium - trade.stop_loss_points, 'SL_HIT')
+                if closed: closed_trades.append(closed)
         
         self.save()
+        return closed_trades
     
     def get_open_trades(self) -> List[VirtualTrade]:
         """Get all open trades."""
@@ -288,6 +299,34 @@ class VirtualTrader:
 Not actual trades. 1 lot per signal.</i>
 """
         return message
+
+    def get_exit_message(self, trade: VirtualTrade) -> str:
+        """Generate a message for a trade exit."""
+        emoji = "✅" if trade.pnl > 0 else "❌"
+        status_text = "TARGET ACHIEVED 🎯" if trade.status == 'TARGET_HIT' else "STOP LOSS HIT 🛑"
+        pnl_color = "🟢" if trade.pnl > 0 else "🔴"
+        
+        return f"""
+{emoji} <b>VIRTUAL TRADE EXIT: {status_text}</b> {emoji}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📊 <b>Trade Details:</b>
+• Index: {trade.index}
+• Signal: {trade.signal_type}
+• Strike: {trade.strike}
+• Lot Size: {trade.lot_size}
+
+💰 <b>Performance:</b>
+• Entry Price: ₹{trade.entry_premium}
+• Exit Price: ₹{trade.exit_premium}
+• Points Captured: {trade.points_captured:+.1f}
+• {pnl_color} <b>P&L: ₹{trade.pnl:+,.0f}</b>
+
+⏰ Exit Time: {trade.exit_time}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━
+<i>*Virtual trading based on AI signals. 
+Not actual trades.</i>
+"""
     
     def should_send_hourly_update(self) -> bool:
         """Check if hourly update should be sent."""

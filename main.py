@@ -431,7 +431,16 @@ class AITradingSystem:
                 spot_data = await self.data_fetcher.get_spot_price(index_config.symbol)
                 if spot_data:
                     spot_price = spot_data.get('last_price', 0)
-                    virtual_trader.check_and_update_trades(index_config.name, spot_price)
+                    closed_trades = virtual_trader.check_and_update_trades(index_config.name, spot_price)
+                    
+                    # Send telegram alerts for completed trades
+                    for trade in closed_trades:
+                        try:
+                            exit_msg = virtual_trader.get_exit_message(trade)
+                            await self.notifier.send_message(exit_msg)
+                            logger.info(f"📱 Sent trade exit alert for {trade.index} {trade.signal_type}")
+                        except Exception as e:
+                            logger.error(f"Error sending trade exit alert: {e}")
         except Exception as e:
             logger.error(f"Error updating virtual trades: {e}")
     

@@ -72,7 +72,7 @@ class AIConfig:
     """AI/Gemini configuration."""
     api_key: str = ""
     enabled: bool = True
-    min_confidence: int = 60  # Minimum confidence to send alert
+    min_confidence: int = 55  # Minimum confidence to send alert
     model: str = "gemini-1.5-flash"
 
 

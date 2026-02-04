@@ -124,8 +124,8 @@ class GeminiAnalyzer:
 }}
 
 IMPORTANT:
-- Only give CALL or PUT signal if confidence > 65 (Increased threshold for quality)
-- Be extremely conservative on PUT signals during overall bullish sentiment.
+- Only give CALL or PUT signal if confidence > 55 (Allows more signals while maintaining quality)
+- Be proactive on trend-following signals (alignment with VWAP and PCR).
 - If signals are conflicting (e.g., Price > VWAP but PCR is high), stay NEUTRAL.
 - Consider risk-reward ratio (minimum 1:1.5)
 - Replace example values with your actual analysis"""

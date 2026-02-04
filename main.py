@@ -136,7 +136,10 @@ class AITradingSystem:
                 logger.warning(f"⚠️ Error fetching expiry for {index_config.display_name}: {e}")
         
         if not self._expiry_dates:
-            logger.error("Could not fetch expiry date for any index")
+            error_msg = "❌ <b>System Startup Failed</b>\n\nCould not fetch expiry dates from Upstox. Your <b>Access Token</b> might be invalid or expired.\n\nPlease run <code>python auth_helper.py</code> to generate a new token."
+            logger.error("Could not fetch expiry date for any index - Token likely invalid")
+            if TELEGRAM_CONFIG.enabled and TELEGRAM_CONFIG.bot_token:
+                await self.notifier.send_message(error_msg)
             return False
         
         logger.info(f"🤖 AI Analysis: {'Enabled' if self.ai_analyzer else 'Disabled'}")

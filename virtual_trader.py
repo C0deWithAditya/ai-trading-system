@@ -72,6 +72,7 @@ class VirtualTrade:
             'points_captured': self.points_captured,
             'pnl': self.pnl,
             'current_pnl': self.current_pnl,
+            'current_points': self.current_premium - self.entry_premium,
             'required_capital': self.entry_premium * self.lot_size,
             'roi_percentage': ((self.current_pnl / (self.entry_premium * self.lot_size)) * 100) if self.entry_premium > 0 else 0,
             'highest_premium': self.highest_premium,
@@ -239,6 +240,13 @@ class VirtualTrader:
     def get_open_trades(self) -> List[VirtualTrade]:
         """Get all open trades."""
         return [t for t in self.trades if t.status == 'OPEN']
+    
+    def is_position_open(self, index: str, signal_type: str, strike: int) -> bool:
+        """Check if a specific position is already open."""
+        for t in self.get_open_trades():
+            if t.index == index and t.signal_type == signal_type and t.strike == strike:
+                return True
+        return False
     
     def get_todays_trades(self) -> List[VirtualTrade]:
         """Get today's trades."""

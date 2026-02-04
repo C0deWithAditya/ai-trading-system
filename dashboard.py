@@ -903,23 +903,25 @@ DASHBOARD_HTML = """
                 const openPosDiv = document.getElementById('vt-open-positions');
                 if (data.open_trades && data.open_trades.length > 0) {
                     openPosDiv.innerHTML = data.open_trades.map(t => {
-                        const isProfit = t.current_pnl >= 0;
-                        const pnlColor = isProfit ? 'var(--accent-green)' : 'var(--accent-red)';
+                        const isProfit = t.current_pnl > 0.01;
+                        const isLoss = t.current_pnl < -0.01;
+                        const pnlColor = isProfit ? 'var(--accent-green)' : (isLoss ? 'var(--accent-red)' : 'var(--text-secondary)');
                         const roi = t.roi_percentage?.toFixed(2);
-                        const statusLabel = isProfit ? 'IN PROFIT' : 'IN LOSS';
+                        const statusLabel = isProfit ? 'IN PROFIT' : (isLoss ? 'IN LOSS' : 'NEUTRAL / WAITING');
+                        const statusBg = isProfit ? 'rgba(0, 210, 106, 0.05)' : (isLoss ? 'rgba(255, 71, 87, 0.05)' : 'rgba(160, 160, 176, 0.05)');
                         return `
-                            <div style="display: flex; flex-direction: column; gap: 4px; padding: 10px 12px; background: ${isProfit ? 'rgba(0, 210, 106, 0.05)' : 'rgba(255, 71, 87, 0.05)'}; border-radius: 8px; margin-bottom: 8px; border-left: 4px solid ${t.signal_type === 'CALL' ? 'var(--accent-green)' : 'var(--accent-red)'}; position: relative; overflow: hidden;">
+                            <div style="display: flex; flex-direction: column; gap: 4px; padding: 10px 12px; background: ${statusBg}; border-radius: 8px; margin-bottom: 8px; border-left: 4px solid ${t.signal_type === 'CALL' ? 'var(--accent-green)' : 'var(--accent-red)'}; position: relative; overflow: hidden;">
                                 <div style="position: absolute; top: 5px; right: 5px; font-size: 9px; font-weight: 800; color: ${pnlColor}; letter-spacing: 0.5px; display: flex; align-items: center; gap: 4px;">
-                                    <span style="width: 6px; height: 6px; background: ${pnlColor}; border-radius: 50%; display: inline-block; animation: pulse 1.5s infinite;"></span>
+                                    <span style="width: 6px; height: 6px; background: ${pnlColor}; border-radius: 50%; display: inline-block; ${isProfit || isLoss ? 'animation: pulse 1.5s infinite;' : ''}"></span>
                                     ${statusLabel}
                                 </div>
                                 <div style="display: flex; justify-content: space-between; align-items: center;">
                                     <span style="font-weight: 600;">🔄 ${t.signal_type} ${t.index} ${t.strike}</span>
-                                    <span style="color: ${pnlColor}; font-weight: 600;">₹${t.current_pnl >= 0 ? '+' : ''}${(t.current_pnl || 0).toLocaleString()} (${roi >= 0 ? '+' : ''}${roi}%)</span>
+                                    <span style="color: ${pnlColor}; font-weight: 600;">₹${t.current_pnl >= 0 ? '+' : ''}${(t.current_pnl || 0).toFixed(2)} (${roi >= 0 ? '+' : ''}${roi}%)</span>
                                 </div>
                                 <div style="display: flex; justify-content: space-between; font-size: 11px; opacity: 0.7;">
                                     <span>Entry: ₹${t.entry_premium} | LTP: ₹${t.current_premium?.toFixed(1)} | Cap: ₹${(t.required_capital || 0).toLocaleString()}</span>
-                                    <span>Lot: ${t.lot_size} | T: +${t.target_points} | SL: -${t.stop_loss_points}</span>
+                                    <span>Lot: ${t.lot_size} | Pts: ${t.current_points?.toFixed(2)}</span>
                                 </div>
                             </div>
                         `;

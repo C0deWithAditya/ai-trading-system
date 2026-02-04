@@ -444,9 +444,8 @@ class AITradingSystem:
                     continue
                 
                 # Get current spot price
-                spot_data = await self.data_fetcher.get_spot_price(index_config.symbol)
-                if spot_data:
-                    spot_price = spot_data.get('last_price', 0)
+                spot_price = await self.data_fetcher.get_spot_price(index_config.symbol)
+                if spot_price > 0:
                     closed_trades = virtual_trader.check_and_update_trades(index_config.name, spot_price)
                     
                     # Send telegram alerts for completed trades

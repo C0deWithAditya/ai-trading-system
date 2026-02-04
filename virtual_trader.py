@@ -63,6 +63,8 @@ class VirtualTrade:
             'entry_premium': self.entry_premium,
             'current_premium': self.current_premium,
             'lot_size': self.lot_size,
+            'lot_count': getattr(self, 'lot_count', 10),
+            'base_lot_size': getattr(self, 'base_lot_size', self.lot_size / 10 if self.lot_size else 65),
             'target_points': self.target_points,
             'stop_loss_points': self.stop_loss_points,
             'entry_time': self.entry_time,
@@ -157,7 +159,10 @@ class VirtualTrader:
         elif "SENSEX" in index.upper():
             index_key = "SENSEX"
         
-        lot_size = LOT_SIZES.get(index_key, 75)
+        # Default to 10 lots per trade as requested
+        base_lot_size = LOT_SIZES.get(index_key, 65)
+        lot_count = 10
+        lot_size = base_lot_size * lot_count
         
         trade = VirtualTrade({
             'id': len(self.trades) + 1,
@@ -167,6 +172,8 @@ class VirtualTrader:
             'spot_at_entry': spot_price,
             'entry_premium': entry_premium,
             'lot_size': lot_size,
+            'lot_count': lot_count,
+            'base_lot_size': base_lot_size,
             'target_points': target_points,
             'stop_loss_points': stop_loss_points,
             'entry_time': now.strftime('%Y-%m-%d %H:%M:%S'),

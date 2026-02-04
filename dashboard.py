@@ -921,7 +921,7 @@ DASHBOARD_HTML = """
                                 </div>
                                 <div style="display: flex; justify-content: space-between; font-size: 11px; opacity: 0.7;">
                                     <span>Entry: ₹${t.entry_premium} | LTP: ₹${t.current_premium?.toFixed(1)} | Cap: ₹${(t.required_capital || 0).toLocaleString()}</span>
-                                    <span>Lot: ${t.lot_size} | Pts: ${t.current_points?.toFixed(2)}</span>
+                                    <span>${t.lot_count} Lots (Qty: ${t.lot_size}) | Pts: ${t.current_points?.toFixed(2)}</span>
                                 </div>
                             </div>
                         `;

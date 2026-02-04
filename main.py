@@ -93,7 +93,36 @@ class AITradingSystem:
         # Market hours (IST)
         self.market_open = dt_time(9, 15)
         self.market_close = dt_time(15, 30)
+        
+        # Macro data
+        self.india_vix = 0.0
+        self.global_sentiment = "Neutral"
+        self.news_context = "No major news"
+        self._last_macro_update = datetime.min
     
+    async def _update_macro_context(self):
+        """Update global news and macro sentiment."""
+        try:
+            # For now, update with recent relevant events for Feb 2026
+            # In a production env, this would call a News API or search tool
+            self.global_sentiment = "Mixed (Bullish on Trade, Bearish on Tech)"
+            self.news_context = (
+                "India-US Trade Deal signed (Bullish for Pharma/Infra/Banks). "
+                "Global Tech sell-off ongoing (Bearish for IT). "
+                "RBI Policy meet expected Feb 6 (Wait & Watch tone). "
+                "US Fed holds rates at 3.50%."
+            )
+            
+            # Fetch real-time India VIX
+            vix_price = await self.data_fetcher.get_spot_price("NSE_INDEX|India VIX")
+            if vix_price > 0:
+                self.india_vix = vix_price
+                
+            self._last_macro_update = datetime.now()
+            logger.info(f"🌍 Macro context updated: VIX={self.india_vix}, Sentiment={self.global_sentiment}")
+        except Exception as e:
+            logger.error(f"Error updating macro context: {e}")
+
     def is_market_hours(self) -> bool:
         """Check if current time is within market hours (IST)."""
         timezone = pytz.timezone('Asia/Kolkata')
@@ -172,6 +201,10 @@ class AITradingSystem:
             ist = pytz.timezone('Asia/Kolkata')
             logger.info(f"🔄 Analysis cycle at {datetime.now(ist).strftime('%H:%M:%S')}")
             
+            # Refresh macro context every hour
+            if (datetime.now() - self._last_macro_update).total_seconds() > 3600:
+                await self._update_macro_context()
+            
             # Analyze each enabled index
             enabled_indices = self.index_manager.get_enabled_indices()
             
@@ -200,6 +233,8 @@ class AITradingSystem:
         
         if not expiry_date:
             return
+            
+        # VIX and Sentiment are already updated in the main cycle
         
         logger.info(f"📊 Analyzing {index_config.display_name}...")
         
@@ -272,7 +307,10 @@ class AITradingSystem:
                     'call': oi_changes['max_call_oi_change'],
                     'put': oi_changes['max_put_oi_change'],
                 },
-                strikes_data=strikes_data  # Pass strikes data
+                strikes_data=strikes_data,
+                india_vix=self.india_vix,
+                global_sentiment=self.global_sentiment,
+                news_context=self.news_context,
             )
         else:
             # Fallback to rule-based strategy
@@ -296,6 +334,9 @@ class AITradingSystem:
         top_put_oi: list,
         oi_changes: dict,
         strikes_data: list = None,
+        india_vix: float = 0.0,
+        global_sentiment: str = "Neutral",
+        news_context: str = "No major news",
     ):
         """Run AI-powered analysis for a specific index."""
         logger.info(f"🤖 Running AI analysis for {index_display_name}...")
@@ -312,7 +353,10 @@ class AITradingSystem:
             top_call_oi_strikes=top_call_oi,
             top_put_oi_strikes=top_put_oi,
             oi_changes=oi_changes,
-            index_name=index_display_name,  # Pass index name to AI
+            index_name=index_display_name,
+            india_vix=india_vix,
+            global_sentiment=global_sentiment,
+            news_context=news_context,
         )
         
         signal = analysis.get("signal", "NEUTRAL")

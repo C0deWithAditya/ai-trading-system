@@ -51,7 +51,10 @@ class GeminiAnalyzer:
         top_call_oi_strikes: List[tuple],
         top_put_oi_strikes: List[tuple],
         oi_changes: Dict[str, List[tuple]],
-        index_name: str = "NIFTY 50",  # New parameter for index name
+        index_name: str = "NIFTY 50",
+        india_vix: Optional[float] = None,
+        global_sentiment: str = "Neutral",
+        news_context: str = "No major news",
     ) -> Dict[str, Any]:
         """
         Analyze market conditions using Gemini AI.
@@ -99,11 +102,17 @@ class GeminiAnalyzer:
 - Call OI Changes: {call_oi_changes_str}
 - Put OI Changes: {put_oi_changes_str}
 
+## MACRO & EXTERNAL CONTEXT:
+- **India VIX**: {india_vix or 'N/A'} (Measures market fear/volatility)
+- **Global Sentiment**: {global_sentiment} (e.g., Dow Jones, Nasdaq futures, Gift Nifty)
+- **Recent News**: {news_context}
+
 ## ANALYSIS RULES:
 1. **Trend is Friend**: If Price is > VWAP, prioritize CALLs. If Price is < VWAP, prioritize PUTs.
-2. **Reversals require extreme data**: Only give a PUT signal during a BULLISH rally if PCR > 1.3 or there is massive Call OI addition at current levels. 
-3. **Avoid Hero Trading**: Do not try to catch the absolute top or bottom. Wait for rejection from resistance/support.
-4. **Short Covering Risk**: If price is rising fast toward a high Call OI strike, expect a breakout (short covering), NOT a reversal.
+2. **Volatility Guard**: If India VIX > 18, reduce confidence and increase stop-loss points. High VIX = High Risk.
+3. **Macro Alignment**: Ensure global sentiment (Bullish/Bearish) doesn't directly contradict your signal unless there's local strength/weakness.
+4. **Reversals require extreme data**: Only give a PUT signal during a BULLISH rally if PCR > 1.3 or there is massive Call OI addition at current levels. 
+5. **Short Covering Risk**: If price is rising fast toward a high Call OI strike, expect a breakout (short covering), NOT a reversal.
 5. **Multi-Factor Alignment**: High confidence (>80) requires: PCR alignment + Price/VWAP alignment + Significant OI support.
 
 ## RESPOND IN THIS EXACT JSON FORMAT ONLY (no other text):
@@ -114,7 +123,7 @@ class GeminiAnalyzer:
     "target_points": 30,
     "stop_loss_points": 15,
     "risk_reward_ratio": "1:2",
-    "reasoning": "Detailed technical reasoning based on PCR, VWAP, and OI data",
+    "reasoning": "A comprehensive 2-3 sentence analysis combining PCR/OI data with the impact of India VIX, Global Sentiment, and News context.",
     "key_levels": {{
         "support": 22900,
         "resistance": 23100

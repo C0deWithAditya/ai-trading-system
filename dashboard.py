@@ -919,10 +919,13 @@ DASHBOARD_HTML = """
                                     <span style="font-weight: 600;">🔄 ${t.signal_type} ${t.index} ${t.strike}</span>
                                     <span style="color: ${pnlColor}; font-weight: 600;">₹${t.current_pnl >= 0 ? '+' : ''}${(t.current_pnl || 0).toFixed(2)} (${roi >= 0 ? '+' : ''}${roi}%)</span>
                                 </div>
-                                <div style="display: flex; justify-content: space-between; font-size: 11px; opacity: 0.7;">
+                                <div style="display: flex; justify-content: space-between; font-size: 11px; opacity: 0.7; margin-bottom: 4px;">
                                     <span>Entry: ₹${t.entry_premium} | LTP: ₹${t.current_premium?.toFixed(1)} | Cap: ₹${(t.required_capital || 0).toLocaleString()}</span>
                                     <span>${t.lot_count} Lots (Qty: ${t.lot_size}) | Pts: ${t.current_points?.toFixed(2)}</span>
                                 </div>
+                                <button onclick="manualExit(${t.id})" style="width: 100%; padding: 6px; background: rgba(255, 71, 87, 0.1); border: 1px solid var(--accent-red); color: var(--accent-red); border-radius: 6px; font-size: 11px; font-weight: 600; cursor: pointer; transition: all 0.2s;" onmouseover="this.style.background='var(--accent-red)'; this.style.color='white';" onmouseout="this.style.background='rgba(255, 71, 87, 0.1)'; this.style.color='var(--accent-red)';">
+                                    🚪 MANUAL EXIT
+                                </button>
                             </div>
                         `;
                     }).join('');
@@ -1005,6 +1008,19 @@ DASHBOARD_HTML = """
         async function logout() {
             await fetch('/api/auth/logout', { method: 'POST' });
             window.location.href = '/login';
+        }
+
+        async function manualExit(tradeId) {
+            if (!confirm('Are you sure you want to exit this trade manually?')) return;
+            try {
+                const res = await fetch(`/api/close_trade/${tradeId}`, { method: 'POST' });
+                const data = await res.json();
+                if (data.status === 'ok') {
+                    fetchVirtualTrades();
+                } else {
+                    alert('Error: ' + (data.error || 'Unknown error'));
+                }
+            } catch (e) { alert('Failed to close trade: ' + e); }
         }
         
         // Initialize and start - wait for everything to be ready
@@ -1215,6 +1231,29 @@ def api_virtual_trades():
             "recent_trades": recent,
             "open_trades": [t.to_dict() for t in trader.get_open_trades()],
         })
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route('/api/close_trade/<int:trade_id>', methods=['POST'])
+def api_close_trade(trade_id):
+    """Manually close a virtual trade."""
+    try:
+        from virtual_trader import get_virtual_trader
+        trader = get_virtual_trader()
+        
+        # Find the trade
+        trade = next((t for t in trader.trades if t.id == trade_id and t.status == 'OPEN'), None)
+        if not trade:
+            return jsonify({"error": "Trade not found or already closed"}), 404
+            
+        # Close at current premium
+        closed = trader.close_trade(trade_id, trade.current_premium, 'MANUAL_EXIT')
+        if closed:
+            return jsonify({"status": "ok", "message": "Trade closed manually"})
+        else:
+            return jsonify({"error": "Failed to close trade"}), 500
+            
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 

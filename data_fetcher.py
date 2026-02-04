@@ -135,6 +135,7 @@ class UpstoxDataFetcher:
         "FINNIFTY": "NSE_INDEX|Nifty Fin Service",
         "SENSEX": "BSE_INDEX|SENSEX",
         "MIDCPNIFTY": "NSE_INDEX|NIFTY MID SELECT",
+        "INDIAVIX": "NSE_INDEX|India VIX",
     }
     
     def __init__(self, access_token: Optional[str] = None):

@@ -340,6 +340,8 @@ Not actual trades. 1 lot per signal.</i>
         """Generate a detailed message for a trade exit."""
         emoji = "✅" if trade.pnl > 0 else "❌"
         status_text = "TARGET ACHIEVED 🎯" if trade.status == 'TARGET_HIT' else "STOP LOSS HIT 🛑"
+        if trade.status == 'MANUAL_EXIT':
+            status_text = "MANUAL EXIT 🚪"
         pnl_color = "🟢" if trade.pnl > 0 else "🔴"
         required_cap = trade.entry_premium * trade.lot_size
         roi = (trade.pnl / required_cap * 100) if required_cap > 0 else 0

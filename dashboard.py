@@ -22,6 +22,7 @@ except ImportError:
 
 from usage_monitor import get_usage_monitor
 from index_config import get_index_manager, AVAILABLE_INDICES
+from notifier import send_telegram_sync
 
 app = Flask(__name__)
 
@@ -1250,6 +1251,13 @@ def api_close_trade(trade_id):
         # Close at current premium
         closed = trader.close_trade(trade_id, trade.current_premium, 'MANUAL_EXIT')
         if closed:
+            # Send Telegram Alert for Manual Exit
+            try:
+                exit_msg = trader.get_exit_message(closed)
+                send_telegram_sync(exit_msg)
+            except Exception as t_err:
+                print(f"Failed to send manual exit alert: {t_err}")
+                
             return jsonify({"status": "ok", "message": "Trade closed manually"})
         else:
             return jsonify({"error": "Failed to close trade"}), 500

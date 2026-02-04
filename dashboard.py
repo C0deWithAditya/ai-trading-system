@@ -864,18 +864,16 @@ DASHBOARD_HTML = """
                 const stats = data.stats || {};
                 
                 // Update stats display
-                const totalPnl = stats.total_pnl || 0;
-                const todayPnl = stats.todays_pnl || 0;
+                // Update VT Stats
+                document.getElementById('vt-total-pnl').textContent = `₹${(data.stats.total_pnl || 0).toLocaleString()}`;
+                document.getElementById('vt-total-pnl').style.color = data.stats.total_pnl >= 0 ? 'var(--accent-green)' : 'var(--accent-red)';
                 
-                document.getElementById('vt-total-pnl').textContent = `₹${totalPnl >= 0 ? '+' : ''}${totalPnl.toLocaleString()}`;
-                document.getElementById('vt-total-pnl').style.color = totalPnl >= 0 ? 'var(--accent-green)' : 'var(--accent-red)';
+                document.getElementById('vt-today-pnl').textContent = `₹${(data.stats.todays_pnl || 0).toLocaleString()}`;
+                document.getElementById('vt-today-pnl').style.color = data.stats.todays_pnl >= 0 ? 'var(--accent-green)' : 'var(--accent-red)';
                 
-                document.getElementById('vt-today-pnl').textContent = `₹${todayPnl >= 0 ? '+' : ''}${todayPnl.toLocaleString()}`;
-                document.getElementById('vt-today-pnl').style.color = todayPnl >= 0 ? 'var(--accent-green)' : 'var(--accent-red)';
-                
-                document.getElementById('vt-win-rate').textContent = `${stats.win_rate || 0}%`;
-                document.getElementById('vt-total-trades').textContent = stats.total_trades || 0;
-                document.getElementById('vt-open-trades').textContent = stats.open_trades || 0;
+                document.getElementById('vt-win-rate').textContent = `${data.stats.win_rate || 0}%`;
+                document.getElementById('vt-total-trades').textContent = data.stats.total_trades || 0;
+                document.getElementById('vt-open-trades').textContent = data.stats.open_trades || 0;
                 
                 // Render recent trades
                 const recentTradesDiv = document.getElementById('vt-recent-trades');
@@ -905,10 +903,16 @@ DASHBOARD_HTML = """
                 const openPosDiv = document.getElementById('vt-open-positions');
                 if (data.open_trades && data.open_trades.length > 0) {
                     openPosDiv.innerHTML = data.open_trades.map(t => {
-                        const pnlColor = t.current_pnl >= 0 ? 'var(--accent-green)' : 'var(--accent-red)';
+                        const isProfit = t.current_pnl >= 0;
+                        const pnlColor = isProfit ? 'var(--accent-green)' : 'var(--accent-red)';
                         const roi = t.roi_percentage?.toFixed(2);
+                        const statusLabel = isProfit ? 'IN PROFIT' : 'IN LOSS';
                         return `
-                            <div style="display: flex; flex-direction: column; gap: 4px; padding: 10px 12px; background: var(--bg-secondary); border-radius: 8px; margin-bottom: 8px; border-left: 4px solid ${t.signal_type === 'CALL' ? 'var(--accent-green)' : 'var(--accent-red)'};">
+                            <div style="display: flex; flex-direction: column; gap: 4px; padding: 10px 12px; background: ${isProfit ? 'rgba(0, 210, 106, 0.05)' : 'rgba(255, 71, 87, 0.05)'}; border-radius: 8px; margin-bottom: 8px; border-left: 4px solid ${t.signal_type === 'CALL' ? 'var(--accent-green)' : 'var(--accent-red)'}; position: relative; overflow: hidden;">
+                                <div style="position: absolute; top: 5px; right: 5px; font-size: 9px; font-weight: 800; color: ${pnlColor}; letter-spacing: 0.5px; display: flex; align-items: center; gap: 4px;">
+                                    <span style="width: 6px; height: 6px; background: ${pnlColor}; border-radius: 50%; display: inline-block; animation: pulse 1.5s infinite;"></span>
+                                    ${statusLabel}
+                                </div>
                                 <div style="display: flex; justify-content: space-between; align-items: center;">
                                     <span style="font-weight: 600;">🔄 ${t.signal_type} ${t.index} ${t.strike}</span>
                                     <span style="color: ${pnlColor}; font-weight: 600;">₹${t.current_pnl >= 0 ? '+' : ''}${(t.current_pnl || 0).toLocaleString()} (${roi >= 0 ? '+' : ''}${roi}%)</span>
@@ -1202,8 +1206,7 @@ def api_virtual_trades():
         trader = get_virtual_trader()
         stats = trader.get_stats()
         
-        # Add recent trades
-        recent = [t.to_dict() for t in trader.trades[-10:][::-1]]
+        recent = [t.to_dict() for t in trader.trades if t.status != 'OPEN'][-10:][::-1]
         
         return jsonify({
             "stats": stats,

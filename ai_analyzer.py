@@ -55,6 +55,7 @@ class GeminiAnalyzer:
         india_vix: Optional[float] = None,
         global_sentiment: str = "Neutral",
         news_context: str = "No major news",
+        recent_learnings: str = "",
     ) -> Dict[str, Any]:
         """
         Analyze market conditions using Gemini AI.
@@ -107,23 +108,32 @@ class GeminiAnalyzer:
 - **Global Sentiment**: {global_sentiment} (e.g., Dow Jones, Nasdaq futures, Gift Nifty)
 - **Recent News**: {news_context}
 
+- **Recent News**: {news_context}
+
+## PREVIOUS SYSTEM LEARNINGS (Self-Improvement):
+{recent_learnings or 'First session of the day.'}
+
 ## ANALYSIS RULES:
-1. **Trend is Friend**: If Price is > VWAP, prioritize CALLs. If Price is < VWAP, prioritize PUTs.
+1. **SCALP vs HOLD**: You MUST distinguish between a quick 15-min Scalp and a 1-2 hour positional HOLD. 
+   - If the trend is strong and PCR is extreme, suggest a **HOLD** signal with a target of 60-100+ points.
+   - If the market is range-bound, suggest a **SCALP** signal with 20-30 point targets.
 2. **Volatility Guard**: If India VIX > 18, reduce confidence and increase stop-loss points. High VIX = High Risk.
 3. **Macro Alignment**: Ensure global sentiment (Bullish/Bearish) doesn't directly contradict your signal unless there's local strength/weakness.
-4. **Reversals require extreme data**: Only give a PUT signal during a BULLISH rally if PCR > 1.3 or there is massive Call OI addition at current levels. 
-5. **Short Covering Risk**: If price is rising fast toward a high Call OI strike, expect a breakout (short covering), NOT a reversal.
-5. **Multi-Factor Alignment**: High confidence (>80) requires: PCR alignment + Price/VWAP alignment + Significant OI support.
+4. **Learning Loop**: Pay attention to "Previous System Learnings" to avoid repeat errors (e.g., "Don't buy CALLs near 26000 resistance").
+5. **Reversals require extreme data**: Only give a PUT signal during a BULLISH rally if PCR > 1.3 or there is massive Call OI addition at current levels. 
+6. **Short Covering Risk**: If price is rising fast toward a high Call OI strike, expect a breakout (short covering), NOT a reversal.
+7. **Holding Strategy**: For 1-2 hour HOLD signals, suggest a trailing SL or a wide SL (30-40 pts) to absorb noise.
 
 ## RESPOND IN THIS EXACT JSON FORMAT ONLY (no other text):
 {{
     "signal": "CALL",
+    "trade_horizon": "HOLD", 
     "confidence": 75,
     "entry_strike": 23000,
-    "target_points": 30,
-    "stop_loss_points": 15,
-    "risk_reward_ratio": "1:2",
-    "reasoning": "A comprehensive 2-3 sentence analysis combining PCR/OI data with the impact of India VIX, Global Sentiment, and News context.",
+    "target_points": 80,
+    "stop_loss_points": 35,
+    "risk_reward_ratio": "1:2.3",
+    "reasoning": "Explain why this is a 2-hour hold based on news, VIX, and OI trends. Explicitly mention the India-US trade deal impact if applicable.",
     "key_levels": {{
         "support": 22900,
         "resistance": 23100
@@ -262,7 +272,8 @@ IMPORTANT:
         vwap: Optional[float],
         support: int,
         resistance: int,
-        index_name: str = "NIFTY 50",  # New parameter
+        index_name: str = "NIFTY 50",
+        trade_horizon: str = "SCALP",
     ) -> str:
         """Generate a formatted alert message."""
         
@@ -284,6 +295,7 @@ IMPORTANT:
 {emoji} <b>{index_name} AI SIGNAL - {signal}</b> {emoji}
 
 🎯 <b>Confidence: {confidence}%</b>
+⏳ <b>Horizon: {trade_horizon} (Hold: { '15-30m' if trade_horizon == 'SCALP' else '1-2 hrs' })</b>
 📊 <b>Strike: {strike} {option_type}</b>
 
 ━━━━━━━━━━━━━━━━━━━━━━

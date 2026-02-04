@@ -99,6 +99,7 @@ class AITradingSystem:
         self.global_sentiment = "Neutral"
         self.news_context = "No major news"
         self._last_macro_update = datetime.min
+        self._eod_done_today = None # Date of last EOD analysis
     
     async def _update_macro_context(self):
         """Update global news and macro sentiment."""
@@ -341,6 +342,10 @@ class AITradingSystem:
         """Run AI-powered analysis for a specific index."""
         logger.info(f"🤖 Running AI analysis for {index_display_name}...")
         
+        # Fetch recent learnings for self-improvement
+        from performance_manager import get_performance_manager
+        recent_learnings = get_performance_manager().get_recent_learnings(limit=3)
+        
         analysis = await self.ai_analyzer.analyze_market(
             spot_price=spot_price,
             pcr=pcr,
@@ -357,6 +362,7 @@ class AITradingSystem:
             india_vix=india_vix,
             global_sentiment=global_sentiment,
             news_context=news_context,
+            recent_learnings=recent_learnings
         )
         
         signal = analysis.get("signal", "NEUTRAL")
@@ -408,7 +414,8 @@ class AITradingSystem:
                     vwap=vwap,
                     support=support,
                     resistance=resistance,
-                    index_name=index_display_name,  # Add index name
+                    index_name=index_display_name,
+                    trade_horizon=analysis.get("trade_horizon", "SCALP")
                 )
                 
                 if alert_message:
@@ -469,6 +476,13 @@ class AITradingSystem:
                             entry_premium=entry_premium,
                             target_points=analysis.get("target_points", 30),
                             stop_loss_points=analysis.get("stop_loss_points", 15),
+                            reasoning=reasoning,
+                            market_context={
+                                "pcr": pcr,
+                                "vix": self.india_vix,
+                                "sentiment": self.global_sentiment,
+                                "vwap": vwap or 0
+                            }
                         )
         else:
             logger.info(f"⏸️ {index_name} No alert - Signal: {signal}, Confidence: {confidence}%")
@@ -548,6 +562,69 @@ class AITradingSystem:
                         spot_price=spot_price,
                         vwap=vwap,
                     )
+                    
+    async def _run_eod_analysis(self):
+        """Analyze day's performance and generate learnings for tomorrow."""
+        try:
+            from performance_manager import get_performance_manager
+            pm = get_performance_manager()
+            virtual_trader = get_virtual_trader()
+            
+            ist = pytz.timezone('Asia/Kolkata')
+            today_str = datetime.now(ist).strftime('%Y-%m-%d')
+            
+            # Get today's results
+            stats = virtual_trader.get_stats()
+            total_trades = stats.get('total_trades', 0)
+            win_rate = stats.get('win_rate', 0)
+            total_pnl = stats.get('total_pnl', 0)
+            
+            # Generate key learnings using AI
+            if self.ai_analyzer and total_trades > 0:
+                prompt = f"""Summarize today's trading performance and provide 2-3 specific "Key Learnings" for tomorrow.
+                Data for {today_str}:
+                - Total Trades: {total_trades}
+                - Win Rate: {win_rate}%
+                - Total P&L: ₹{total_pnl:,.0f}
+                
+                Respond in JSON format:
+                {{
+                    "market_summary": "Short 1-sentence summary of day's volatility",
+                    "key_learnings": "1. Learning one... 2. Learning two..."
+                }}
+                """
+                # Simple AI call for summary (using the same analyzer model)
+                # We can reuse the _parse_ai_response or just calling directly
+                session = await self.ai_analyzer._get_session()
+                url = f"{self.ai_analyzer.base_url}/{self.ai_analyzer.model}:generateContent?key={self.ai_analyzer.api_key}"
+                payload = {"contents": [{"parts": [{"text": prompt}]}]}
+                
+                async with session.post(url, json=payload) as resp:
+                    if resp.status == 200:
+                        res = await resp.json()
+                        text = res.get("candidates", [{}])[0].get("content", {}).get("parts", [{}])[0].get("text", "")
+                        analysis = self.ai_analyzer._parse_ai_response(text)
+                        
+                        pm.save_daily_analysis(today_str, {
+                            'total_trades': total_trades,
+                            'win_rate': win_rate,
+                            'total_pnl': total_pnl,
+                            'key_learnings': analysis.get('key_learnings', 'Keep following the strategy.'),
+                            'market_summary': analysis.get('market_summary', 'Standard trading day.')
+                        })
+                        
+                        logger.info(f"✅ EOD analysis saved with learnings: {analysis.get('key_learnings')}")
+                        
+                        # Notify on Telegram
+                        eod_msg = f"🌅 <b>End-of-Day Analysis ({today_str})</b>\n\n"
+                        eod_msg += f"📊 Total Trades: {total_trades}\n"
+                        eod_msg += f"🏆 Win Rate: {win_rate}%\n"
+                        eod_msg += f"💰 Realized P&L: ₹{total_pnl:,.0f}\n\n"
+                        eod_msg += f"💡 <b>Key Learnings:</b>\n{analysis.get('key_learnings')}"
+                        await self.notifier.send_message(eod_msg)
+            
+        except Exception as e:
+            logger.error(f"Error in EOD analysis: {e}", exc_info=True)
     
     async def run(self):
         """Main run loop."""
@@ -564,7 +641,16 @@ class AITradingSystem:
                     await self.run_ai_analysis_cycle()
                 else:
                     ist = pytz.timezone('Asia/Kolkata')
-                    current_time = datetime.now(ist).strftime('%H:%M:%S')
+                    now_ist = datetime.now(ist)
+                    current_time = now_ist.strftime('%H:%M:%S')
+                    current_date = now_ist.strftime('%Y-%m-%d')
+                    
+                    # Run EOD analysis once after market close
+                    if self._eod_done_today != current_date and now_ist.hour >= 15:
+                        logger.info("🌅 Market closed. Running End-of-Day analysis...")
+                        await self._run_eod_analysis()
+                        self._eod_done_today = current_date
+                        
                     logger.info(f"⏸️ Market closed ({current_time}). Waiting...")
                 
                 await asyncio.sleep(SYSTEM_CONFIG.refresh_interval_seconds)

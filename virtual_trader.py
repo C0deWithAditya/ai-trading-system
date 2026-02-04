@@ -52,6 +52,8 @@ class VirtualTrade:
         self.lowest_premium = data.get('lowest_premium', self.entry_premium)
         self.current_premium = data.get('current_premium', self.entry_premium)
         self.current_pnl = data.get('current_pnl', 0)
+        self.reasoning = data.get('reasoning', '')
+        self.market_context = data.get('market_context', {})
     
     def to_dict(self) -> Dict:
         return {
@@ -79,6 +81,8 @@ class VirtualTrade:
             'roi_percentage': ((self.current_pnl / (self.entry_premium * self.lot_size)) * 100) if self.entry_premium > 0 else 0,
             'highest_premium': self.highest_premium,
             'lowest_premium': self.lowest_premium,
+            'reasoning': self.reasoning,
+            'market_context': self.market_context,
         }
     
     def calculate_pnl(self, current_premium: float) -> float:
@@ -145,6 +149,8 @@ class VirtualTrader:
         entry_premium: float,
         target_points: int,
         stop_loss_points: int,
+        reasoning: str = '',
+        market_context: Dict = None,
     ) -> VirtualTrade:
         """Open a new virtual trade."""
         ist = pytz.timezone('Asia/Kolkata')
@@ -178,6 +184,8 @@ class VirtualTrader:
             'stop_loss_points': stop_loss_points,
             'entry_time': now.strftime('%Y-%m-%d %H:%M:%S'),
             'status': 'OPEN',
+            'reasoning': reasoning,
+            'market_context': market_context or {},
         })
         
         self.trades.append(trade)
@@ -206,6 +214,14 @@ class VirtualTrader:
                     self.losing_trades += 1
                 
                 self.save()
+                
+                # Log to permanent database
+                try:
+                    from performance_manager import get_performance_manager
+                    get_performance_manager().log_trade(trade.to_dict())
+                except Exception as db_err:
+                    logger.error(f"Failed to log trade to permanent DB: {db_err}")
+                    
                 logger.info(f"📊 Virtual Trade #{trade_id} closed: {status} | P&L: ₹{trade.pnl:,.0f}")
                 return trade
         return None

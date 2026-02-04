@@ -271,7 +271,8 @@ class AITradingSystem:
                 oi_changes={
                     'call': oi_changes['max_call_oi_change'],
                     'put': oi_changes['max_put_oi_change'],
-                }
+                },
+                strikes_data=strikes_data  # Pass strikes data
             )
         else:
             # Fallback to rule-based strategy
@@ -294,6 +295,7 @@ class AITradingSystem:
         top_call_oi: list,
         top_put_oi: list,
         oi_changes: dict,
+        strikes_data: list = None,
     ):
         """Run AI-powered analysis for a specific index."""
         logger.info(f"🤖 Running AI analysis for {index_display_name}...")
@@ -400,11 +402,23 @@ class AITradingSystem:
                     
                     # Open virtual trade for P&L tracking
                     virtual_trader = get_virtual_trader()
-                    entry_premium = 100  # Estimated ATM premium
+                    
+                    # Try to fetch real entry premium from option chain
+                    entry_premium = 100  # Default fallback
+                    entry_strike = analysis.get("entry_strike", 0)
+                    
+                    if strikes_data and entry_strike > 0:
+                        for s in strikes_data:
+                            if s.strike_price == entry_strike:
+                                entry_premium = s.call_ltp if signal == "CALL" else s.put_ltp
+                                # If LTP is 0 (no trade), use a realistic placeholder or skip
+                                if entry_premium == 0: entry_premium = 100
+                                break
+                    
                     virtual_trader.open_trade(
                         index=index_name,
                         signal_type=signal,
-                        strike=analysis.get("entry_strike", 0),
+                        strike=entry_strike,
                         spot_price=spot_price,
                         entry_premium=entry_premium,
                         target_points=analysis.get("target_points", 30),

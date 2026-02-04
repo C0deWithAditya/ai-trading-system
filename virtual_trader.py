@@ -17,8 +17,8 @@ VIRTUAL_TRADES_FILE = "virtual_trades.json"
 
 # Lot sizes for different indices
 LOT_SIZES = {
-    "NIFTY": 75,
-    "BANKNIFTY": 30,
+    "NIFTY": 25,
+    "BANKNIFTY": 15,
     "SENSEX": 10,
 }
 

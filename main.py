@@ -387,6 +387,16 @@ class AITradingSystem:
         logger.info(f"🎯 {index_name} AI Signal: {signal} | Confidence: {confidence}%")
         logger.info(f"💡 Reasoning: {reasoning[:100]}...")
         
+        # Check if AI failed (quota exhausted, API error) - fall back to rule-based
+        if "API error" in reasoning or "unavailable" in reasoning.lower() or confidence == 0:
+            logger.warning(f"⚠️ AI failed, falling back to rule-based analysis")
+            await self._run_rule_based_analysis(
+                index_name, spot_price, strikes_data, 
+                {"pcr_oi": pcr, "total_call_oi": total_call_oi, "total_put_oi": total_put_oi}, 
+                vwap
+            )
+            return
+        
         # ALWAYS add signals to dashboard for visibility (even low confidence)
         if signal in ["CALL", "PUT"]:
             add_signal({
@@ -551,7 +561,7 @@ class AITradingSystem:
     
     async def _run_rule_based_analysis(self, index_name, spot_price, strikes_data, pcr_data, vwap):
         """Fallback to rule-based strategy."""
-        logger.info("📊 Running rule-based analysis (AI disabled)")
+        logger.info("📊 Running rule-based analysis (AI fallback)")
         
         signals = self.strategy.analyze(
             spot_price=spot_price,
@@ -563,7 +573,22 @@ class AITradingSystem:
         for signal in signals:
             if signal.confidence >= 0.4:
                 reason = "\n".join(f"• {r}" for r in signal.reasons)
+                signal_type_str = "CALL" if signal.signal_type == SignalType.CALL else "PUT"
+                confidence_pct = int(signal.confidence * 100)
                 
+                # Add to dashboard for chart arrows
+                add_signal({
+                    "index": index_name,
+                    "signal": signal_type_str,
+                    "strike": signal.strike,
+                    "confidence": confidence_pct,
+                    "reasoning": f"[Rule-based] {reason[:80]}...",
+                    "target": 25,
+                    "stop_loss": 12,
+                })
+                logger.info(f"📊 Rule-based {signal_type_str} signal added to dashboard")
+                
+                # Send Telegram alert
                 if signal.signal_type == SignalType.CALL:
                     await self.notifier.send_call_alert(
                         strike=signal.strike,

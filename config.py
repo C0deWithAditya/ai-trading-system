@@ -94,7 +94,7 @@ def load_config():
     ai = AIConfig(
         api_key=os.getenv("GEMINI_API_KEY", ""),
         enabled=os.getenv("AI_ENABLED", "true").lower() == "true",
-        min_confidence=int(os.getenv("AI_MIN_CONFIDENCE", "60")),
+        min_confidence=int(os.getenv("AI_MIN_CONFIDENCE", "50")),
     )
     
     trading = TradingConfig()

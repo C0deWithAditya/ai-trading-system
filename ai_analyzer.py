@@ -119,34 +119,36 @@ class GeminiAnalyzer:
 
 ## SIGNAL DECISION RULES (FOLLOW STRICTLY):
 
-### WHEN TO GIVE **PUT** SIGNAL (BEARISH):
-1. PCR > 1.0 (More puts than calls = Bearish expectation)
-2. Price is BELOW VWAP (Weak price action)
-3. Price is falling towards support levels
-4. Massive Call OI addition at current levels (Writers expect fall)
-5. Global sentiment is Bearish
+**IMPORTANT: You are a trading assistant. Traders need clear signals. Avoid NEUTRAL unless truly uncertain.**
 
 ### WHEN TO GIVE **CALL** SIGNAL (BULLISH):
-1. PCR < 0.8 (More calls than puts = Bullish expectation)
-2. Price is ABOVE VWAP (Strong price action)
-3. Price is rising towards resistance with momentum
-4. Massive Put OI addition at support (Writers expect support to hold)
-5. Global sentiment is Bullish
+Give CALL when 2 or more of these are true:
+1. PCR < 0.9 (Bullish bias)
+2. Price is ABOVE VWAP
+3. Bullish patterns detected (Hammer, Engulfing, Morning Star, etc.)
+4. High Put OI at support = Writers expect support to hold
+5. Trend is BULLISH
+
+### WHEN TO GIVE **PUT** SIGNAL (BEARISH):
+Give PUT when 2 or more of these are true:
+1. PCR > 0.95 (Bearish bias)
+2. Price is BELOW VWAP
+3. Bearish patterns detected (Shooting Star, Engulfing, Evening Star, etc.)
+4. High Call OI at resistance = Writers expect resistance to hold
+5. Trend is BEARISH
 
 ### TRADE HORIZON RULES:
-**SCALP** (Quick 15-30 min trades):
+**SCALP** (Default - Use for most trades):
 - Target: 20-30 points
 - Stop Loss: 10-15 points
-- Use when: Market is range-bound, VIX < 15, no clear trend
 
-**HOLD** (1-2 hour positional):
+**HOLD** (Only for strong trends):
 - Target: 60-100 points
 - Stop Loss: 30-40 points
-- Use when: Strong trend confirmed, PCR extreme (<0.6 or >1.3), clear breakout
 
-### NEUTRAL CONDITIONS:
-- PCR between 0.85-1.05 with price near VWAP = NEUTRAL
-- Conflicting signals (e.g., bullish PCR but price below VWAP) = NEUTRAL or low confidence
+### NEUTRAL - USE SPARINGLY:
+Only give NEUTRAL when PCR is 0.92-0.98 AND price is exactly at VWAP AND no clear patterns.
+**Prefer giving a signal with lower confidence (50-60%) over NEUTRAL.**
 
 ## RESPOND IN THIS EXACT JSON FORMAT ONLY:
 
@@ -182,12 +184,12 @@ class GeminiAnalyzer:
 
 ## CRITICAL REMINDERS:
 - **ANALYZE THE DATA FIRST, THEN DECIDE**: Do NOT copy the examples. Look at PCR, VWAP, OI data.
-- If PCR < 0.85 AND Price > VWAP = **CALL**
-- If PCR > 1.0 AND Price < VWAP = **PUT**
+- If PCR < 0.9 AND Price > VWAP = Give **CALL** (confidence 60+)
+- If PCR > 0.95 AND Price < VWAP = Give **PUT** (confidence 60+)
 - Give PUT when bearish, CALL when bullish. NO DEFAULT BIAS!
-- Prefer SCALP (20-30 pts) for higher win rate over HOLD (60-100 pts)
-- Confidence > 55 required for signal
-- If truly uncertain, say NEUTRAL with reasoning"""
+- Prefer SCALP (20-30 pts) for higher win rate
+- Confidence > 50 is acceptable for signals
+- Only say NEUTRAL if truly 50/50 - traders prefer low confidence signals over no signal"""
 
 
         try:

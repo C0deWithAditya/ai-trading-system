@@ -437,7 +437,54 @@ class AITradingSystem:
             if flip_flop_blocked:
                 return
             
-            # Check if same signal was sent recently (repeat prevention)
+            # Track signal for performance analysis (even if alert is suppressed)
+            tracker = get_signal_tracker()
+            tracker.add_signal(
+                index_name=index_name,
+                signal_type=signal,
+                strike=analysis.get("entry_strike", 0),
+                entry_price=0,  # Will be updated when checking outcome
+                spot_at_signal=spot_price,
+                target_points=analysis.get("target_points", 0),
+                stop_loss_points=analysis.get("stop_loss_points", 0),
+                confidence=confidence,
+                reasoning=reasoning,
+            )
+            
+            # ALWAYS Open virtual trade for P&L tracking if confidence meets threshold
+            virtual_trader = get_virtual_trader()
+            entry_strike = analysis.get("entry_strike", 0)
+            
+            # Prevent duplicate open trades for same strike/signal
+            if virtual_trader.is_position_open(index_name, signal, entry_strike):
+                logger.info(f"⏸️ Virtual position already open for {index_name} {signal} {entry_strike}")
+            else:
+                # Try to fetch real entry premium from option chain
+                entry_premium = 100  # Default fallback
+                if strikes_data and entry_strike > 0:
+                    for s in strikes_data:
+                        if s.get('strike_price') == entry_strike:
+                            entry_premium = s.get('call_lp' if signal == 'CALL' else 'put_lp', 100)
+                            break
+                
+                virtual_trader.open_trade(
+                    index=index_name,
+                    signal_type=signal,
+                    strike=entry_strike,
+                    spot_price=spot_price,
+                    entry_premium=entry_premium,
+                    target_points=analysis.get("target_points", 25),
+                    stop_loss_points=analysis.get("stop_loss_points", 12),
+                    reasoning=reasoning,
+                    market_context={
+                        "pcr": pcr,
+                        "vwap": vwap,
+                        "support": support,
+                        "resistance": resistance
+                    }
+                )
+
+            # TELEGRAM ALERT NOTIFICATION LOGIC
             last_signal_time = self._last_signals.get(signal_key)
             time_threshold = 600  # 10 minutes in seconds
             
@@ -448,85 +495,37 @@ class AITradingSystem:
             
             if not should_send:
                 time_since_last = (current_time - last_signal_time).total_seconds()
-                logger.info(f"⏸️ Skipping repeat signal - last sent {int(time_since_last)}s ago (need {time_threshold}s)")
+                logger.info(f"⏸️ Alert suppressed (repeat) - last sent {int(time_since_last)}s ago")
                 return
             
-            logger.info(f"📤 Preparing to send {signal} alert for {index_name}...")
-
-            if should_send:
-                # Generate and send alert with index name
-                alert_message = await self.ai_analyzer.generate_alert_message(
-                    signal=signal,
-                    confidence=confidence,
-                    strike=analysis.get("entry_strike", 0),
-                    spot_price=spot_price,
-                    reasoning=reasoning,
-                    target_points=analysis.get("target_points", 0),
-                    stop_loss_points=analysis.get("stop_loss_points", 0),
-                    risk_reward=analysis.get("risk_reward_ratio", "N/A"),
-                    pcr=pcr,
-                    vwap=vwap,
-                    support=support,
-                    resistance=resistance,
-                    index_name=index_display_name,
-                    trade_horizon=analysis.get("trade_horizon", "SCALP")
-                )
-                
-                if alert_message:
-                    await self.notifier.send_message(alert_message)
-                    logger.info(f"📱 {index_name} Alert sent: {signal} at strike {analysis.get('entry_strike')}")
+            logger.info(f"📤 Sending Telegram alert for {index_name}...")
+            
+            # Generate and send alert with index name
+            alert_message = await self.ai_analyzer.generate_alert_message(
+                signal=signal,
+                confidence=confidence,
+                strike=analysis.get("entry_strike", 0),
+                spot_price=spot_price,
+                reasoning=reasoning,
+                target_points=analysis.get("target_points", 0),
+                stop_loss_points=analysis.get("stop_loss_points", 0),
+                risk_reward=analysis.get("risk_reward_ratio", "N/A"),
+                pcr=pcr,
+                vwap=vwap,
+                support=support,
+                resistance=resistance,
+                index_name=index_display_name,
+                trade_horizon=analysis.get("trade_horizon", "SCALP")
+            )
+            
+            if alert_message:
+                sent = await self.notifier.send_message(alert_message)
+                if sent:
+                    logger.info(f"📱 {index_name} Alert sent to Telegram")
                     self._last_signals[signal_key] = current_time
-                    
-                    # Track alert sent
                     self.usage_monitor.current_usage.alerts_sent += 1
-                    
-                    # Track signal for performance analysis
-                    tracker = get_signal_tracker()
-                    tracker.add_signal(
-                        index_name=index_name,
-                        signal_type=signal,
-                        strike=analysis.get("entry_strike", 0),
-                        entry_price=0,  # Will be updated when checking outcome
-                        spot_at_signal=spot_price,
-                        target_points=analysis.get("target_points", 0),
-                        stop_loss_points=analysis.get("stop_loss_points", 0),
-                        confidence=confidence,
-                        reasoning=reasoning,
-                    )
-                    
-                    # Open virtual trade for P&L tracking
-                    virtual_trader = get_virtual_trader()
-                    
-                    # Prevent duplicate open trades for same strike/signal
-                    entry_strike = analysis.get("entry_strike", 0)
-                    if virtual_trader.is_position_open(index_name, signal, entry_strike):
-                        logger.info(f"⏸️ Skipping virtual trade for {index_name} {signal} {entry_strike} - Already open")
-                    else:
-                        # Try to fetch real entry premium from option chain
-                        entry_premium = 100  # Default fallback
-                        if strikes_data and entry_strike > 0:
-                            for s in strikes_data:
-                                if s.strike_price == entry_strike:
-                                    entry_premium = s.call_ltp if signal == "CALL" else s.put_ltp
-                                    if entry_premium == 0: entry_premium = 100
-                                    break
-                        
-                        virtual_trader.open_trade(
-                            index=index_name,
-                            signal_type=signal,
-                            strike=entry_strike,
-                            spot_price=spot_price,
-                            entry_premium=entry_premium,
-                            target_points=analysis.get("target_points", 30),
-                            stop_loss_points=analysis.get("stop_loss_points", 15),
-                            reasoning=reasoning,
-                            market_context={
-                                "pcr": pcr,
-                                "vix": self.india_vix,
-                                "sentiment": self.global_sentiment,
-                                "vwap": vwap or 0
-                            }
-                        )
+                else:
+                    logger.error(f"❌ Failed to send Telegram alert for {index_name}")
         else:
             logger.info(f"⏸️ {index_name} No alert - Signal: {signal}, Confidence: {confidence}%")
         

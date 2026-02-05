@@ -56,6 +56,7 @@ class GeminiAnalyzer:
         global_sentiment: str = "Neutral",
         news_context: str = "No major news",
         recent_learnings: str = "",
+        pattern_summary: str = "",
     ) -> Dict[str, Any]:
         """
         Analyze market conditions using Gemini AI.
@@ -112,6 +113,9 @@ class GeminiAnalyzer:
 
 ## PREVIOUS LEARNINGS:
 {recent_learnings or 'First session.'}
+
+## CHART PATTERNS DETECTED:
+{pattern_summary or 'No patterns detected yet.'}
 
 ## SIGNAL DECISION RULES (FOLLOW STRICTLY):
 

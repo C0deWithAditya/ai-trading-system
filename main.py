@@ -343,6 +343,23 @@ class AITradingSystem:
         from performance_manager import get_performance_manager
         recent_learnings = get_performance_manager().get_recent_learnings(limit=3)
         
+        # Get pattern analysis from candles
+        pattern_summary = ""
+        try:
+            from pattern_recognition import get_pattern_engine
+            # Get candles from dashboard state if available
+            from dashboard import dashboard_state
+            candles = dashboard_state.get("market_data", {}).get(index_name, {}).get("candles", [])
+            if candles and len(candles) >= 20:
+                pattern_engine = get_pattern_engine()
+                pattern_analysis = pattern_engine.analyze(candles)
+                pattern_summary = pattern_analysis.get("pattern_summary", "")
+                trend = pattern_analysis.get("trend", "UNKNOWN")
+                ema_20 = pattern_analysis.get("ema_20", 0)
+                pattern_summary = f"Trend: {trend} | EMA20: {ema_20:.2f} | {pattern_summary}"
+        except Exception as pe:
+            logger.warning(f"Pattern analysis failed: {pe}")
+        
         analysis = await self.ai_analyzer.analyze_market(
             spot_price=spot_price,
             pcr=pcr,
@@ -359,7 +376,8 @@ class AITradingSystem:
             india_vix=india_vix,
             global_sentiment=global_sentiment,
             news_context=news_context,
-            recent_learnings=recent_learnings
+            recent_learnings=recent_learnings,
+            pattern_summary=pattern_summary
         )
         
         signal = analysis.get("signal", "NEUTRAL")

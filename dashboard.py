@@ -470,6 +470,42 @@ DASHBOARD_HTML = """
                 </div>
             </div>
             
+            <!-- Pattern Recognition Display -->
+            <div class="card" style="grid-column: span 12; margin-top: 20px;">
+                <div class="card-header">
+                    <span class="card-title">🔍 Pattern Recognition & Trend Analysis</span>
+                </div>
+                <div style="display: grid; grid-template-columns: 1fr 2fr; gap: 20px;">
+                    <div>
+                        <h4 style="margin-bottom: 12px; color: var(--accent-blue);">📊 Detected Patterns</h4>
+                        <div id="pattern-display" style="padding: 10px; background: var(--bg-secondary); border-radius: 8px; min-height: 150px;">
+                            <div style="opacity: 0.5;">Loading patterns...</div>
+                        </div>
+                    </div>
+                    <div>
+                        <h4 style="margin-bottom: 12px; color: var(--accent-blue);">📈 Trend Indicators</h4>
+                        <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px;">
+                            <div class="usage-item" style="background: var(--bg-secondary); padding: 12px; border-radius: 8px;">
+                                <div id="ema-value" class="usage-value" style="font-size: 18px;">--</div>
+                                <div class="usage-label">20 EMA</div>
+                            </div>
+                            <div class="usage-item" style="background: var(--bg-secondary); padding: 12px; border-radius: 8px;">
+                                <div id="trend-value" class="usage-value" style="font-size: 16px;">--</div>
+                                <div class="usage-label">Trend</div>
+                            </div>
+                            <div class="usage-item" style="background: var(--bg-secondary); padding: 12px; border-radius: 8px;">
+                                <div id="pattern-count" class="usage-value" style="font-size: 18px;">0</div>
+                                <div class="usage-label">Patterns</div>
+                            </div>
+                            <div class="usage-item" style="background: var(--bg-secondary); padding: 12px; border-radius: 8px;">
+                                <div id="pattern-bias" class="usage-value" style="font-size: 16px;">--</div>
+                                <div class="usage-label">Bias</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
             <!-- Virtual Trading Showcase -->
             <div class="card" style="grid-column: span 12; margin-top: 20px;">
                 <div class="card-header">
@@ -537,6 +573,9 @@ DASHBOARD_HTML = """
         let supportLine = null;
         let resistanceLine = null;
         let vwapLine = null;
+        let ema20Series = null; // 20 EMA Line
+        let currentPatterns = []; // Detected patterns
+        let currentTrend = 'UNKNOWN';
 
         
         // --- CHART SETUP ---
@@ -576,6 +615,37 @@ DASHBOARD_HTML = """
             }).observe(chartContainer);
             
             isChartReady = true;
+            
+            // Add 20 EMA line series
+            ema20Series = chart.addLineSeries({
+                color: '#f39c12',
+                lineWidth: 2,
+                title: '20 EMA',
+            });
+        }
+        
+        // Calculate EMA for chart display
+        function calculateEMA(candles, period) {
+            if (candles.length < period) return [];
+            
+            const multiplier = 2 / (period + 1);
+            const emaData = [];
+            
+            // Start with SMA
+            let sum = 0;
+            for (let i = 0; i < period; i++) {
+                sum += candles[i].close;
+            }
+            let ema = sum / period;
+            emaData.push({ time: candles[period - 1].time, value: ema });
+            
+            // Calculate EMA for rest
+            for (let i = period; i < candles.length; i++) {
+                ema = (candles[i].close - ema) * multiplier + ema;
+                emaData.push({ time: candles[i].time, value: ema });
+            }
+            
+            return emaData;
         }
         
         
@@ -622,6 +692,71 @@ DASHBOARD_HTML = """
                     title: 'VWAP',
                 });
             }
+            
+            // Update pattern display
+            if (data.patterns) {
+                currentPatterns = data.patterns;
+                currentTrend = data.trend || 'UNKNOWN';
+                updatePatternDisplay();
+            }
+        }
+        
+        function updatePatternDisplay() {
+            const patternDiv = document.getElementById('pattern-display');
+            if (!patternDiv) return;
+            
+            const trendColor = currentTrend === 'BULLISH' ? 'var(--accent-green)' : 
+                              (currentTrend === 'BEARISH' ? 'var(--accent-red)' : 'var(--text-secondary)');
+            const trendIcon = currentTrend === 'BULLISH' ? '📈' : (currentTrend === 'BEARISH' ? '📉' : '➡️');
+            
+            let html = `<div style="margin-bottom: 8px;"><span style="color: ${trendColor}; font-weight: 700;">${trendIcon} TREND: ${currentTrend}</span></div>`;
+            
+            if (currentPatterns && currentPatterns.length > 0) {
+                html += currentPatterns.slice(0, 5).map(p => {
+                    const color = p.type === 'BULLISH' ? 'var(--accent-green)' : 
+                                 (p.type === 'BEARISH' ? 'var(--accent-red)' : 'var(--text-secondary)');
+                    const icon = p.type === 'BULLISH' ? '🟢' : (p.type === 'BEARISH' ? '🔴' : '⚪');
+                    return `<div style="padding: 4px 0; border-bottom: 1px solid var(--bg-secondary);">
+                        <span>${icon}</span>
+                        <span style="color: ${color}; font-weight: 600;">${p.name}</span>
+                        <span style="opacity: 0.7; font-size: 11px;"> (${p.confidence}%)</span>
+                        <div style="font-size: 10px; opacity: 0.6; margin-left: 20px;">${p.description}</div>
+                    </div>`;
+                }).join('');
+            } else {
+                html += '<div style="opacity: 0.5;">Scanning for patterns...</div>';
+            }
+            
+            patternDiv.innerHTML = html;
+            
+            // Update trend indicator cards
+            const trendValueDiv = document.getElementById('trend-value');
+            if (trendValueDiv) {
+                trendValueDiv.textContent = currentTrend;
+                trendValueDiv.style.color = trendColor;
+            }
+            
+            const patternCountDiv = document.getElementById('pattern-count');
+            if (patternCountDiv) {
+                patternCountDiv.textContent = currentPatterns ? currentPatterns.length : 0;
+            }
+            
+            // Calculate pattern bias
+            const bullishPatterns = currentPatterns ? currentPatterns.filter(p => p.type === 'BULLISH').length : 0;
+            const bearishPatterns = currentPatterns ? currentPatterns.filter(p => p.type === 'BEARISH').length : 0;
+            const patternBiasDiv = document.getElementById('pattern-bias');
+            if (patternBiasDiv) {
+                if (bullishPatterns > bearishPatterns) {
+                    patternBiasDiv.textContent = 'BULLISH';
+                    patternBiasDiv.style.color = 'var(--accent-green)';
+                } else if (bearishPatterns > bullishPatterns) {
+                    patternBiasDiv.textContent = 'BEARISH';
+                    patternBiasDiv.style.color = 'var(--accent-red)';
+                } else {
+                    patternBiasDiv.textContent = 'NEUTRAL';
+                    patternBiasDiv.style.color = 'var(--text-secondary)';
+                }
+            }
         }
         
         async function fetchCandles(indexName) {
@@ -667,14 +802,20 @@ DASHBOARD_HTML = """
                         
                         updateMarkers(indexName);
                         
-                        // Update indicators from response
-                        if (data.support || data.resistance || data.vwap) {
-                            updateIndicators({
-                                support: data.support,
-                                resistance: data.resistance,
-                                vwap: data.vwap
-                            });
+                        // Calculate and display 20 EMA
+                        if (ema20Series && uniqueData.length >= 20) {
+                            const emaData = calculateEMA(uniqueData, 20);
+                            ema20Series.setData(emaData);
                         }
+                        
+                        // Update indicators from response
+                        updateIndicators({
+                            support: data.support,
+                            resistance: data.resistance,
+                            vwap: data.vwap,
+                            patterns: data.patterns || [],
+                            trend: data.trend || 'UNKNOWN'
+                        });
                         
                         // Update last update time with LIVE indicator
                         const now = new Date();
@@ -1141,13 +1282,25 @@ def get_candles(index_name):
             if index_name in dashboard_state["market_data"]:
                 dashboard_state["market_data"][index_name]["candles"] = formatted
             
+            # Run pattern recognition
+            try:
+                from pattern_recognition import get_pattern_engine
+                pattern_engine = get_pattern_engine()
+                pattern_analysis = pattern_engine.analyze(formatted)
+            except Exception as pe:
+                pattern_analysis = {"patterns": [], "trend": "UNKNOWN", "ema_20": 0}
+            
             return jsonify({
                 "candles": formatted, 
                 "interval": interval, 
                 "live": True,
                 "support": cached_data.get("support", 0),
                 "resistance": cached_data.get("resistance", 0),
-                "vwap": cached_data.get("vwap", 0)
+                "vwap": cached_data.get("vwap", 0),
+                "patterns": pattern_analysis.get("patterns", []),
+                "trend": pattern_analysis.get("trend", "UNKNOWN"),
+                "ema_20": pattern_analysis.get("ema_20", 0),
+                "pattern_summary": pattern_analysis.get("pattern_summary", "")
             })
         else:
             # Fallback to cached

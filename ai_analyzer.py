@@ -149,6 +149,23 @@ class GeminiAnalyzer:
 - Conflicting signals (e.g., bullish PCR but price below VWAP) = NEUTRAL or low confidence
 
 ## RESPOND IN THIS EXACT JSON FORMAT ONLY:
+
+**EXAMPLE 1 - BULLISH MARKET (Give CALL):**
+{{
+    "signal": "CALL",
+    "trade_horizon": "SCALP", 
+    "confidence": 70,
+    "entry_strike": {int(spot_price // 100) * 100},
+    "target_points": 25,
+    "stop_loss_points": 12,
+    "risk_reward_ratio": "1:2",
+    "reasoning": "PCR at 0.72 shows bullish sentiment. Price above VWAP (+0.2%). Put OI building at support. Scalp CALL.",
+    "key_levels": {{"support": {support}, "resistance": {resistance}}},
+    "market_bias": "BULLISH",
+    "factors_aligned": 4
+}}
+
+**EXAMPLE 2 - BEARISH MARKET (Give PUT):**
 {{
     "signal": "PUT",
     "trade_horizon": "SCALP", 
@@ -157,16 +174,16 @@ class GeminiAnalyzer:
     "target_points": 25,
     "stop_loss_points": 12,
     "risk_reward_ratio": "1:2",
-    "reasoning": "Price below VWAP (-0.3%), PCR at 1.05 indicates mild bearish bias. Call OI building at {resistance} acts as resistance. Scalp PUT with tight SL.",
-    "key_levels": {{
-        "support": {support},
-        "resistance": {resistance}
-    }},
+    "reasoning": "PCR at 1.15 shows bearish sentiment. Price below VWAP (-0.3%). Call OI at resistance. Scalp PUT.",
+    "key_levels": {{"support": {support}, "resistance": {resistance}}},
     "market_bias": "BEARISH",
-    "factors_aligned": 3
+    "factors_aligned": 4
 }}
 
 ## CRITICAL REMINDERS:
+- **ANALYZE THE DATA FIRST, THEN DECIDE**: Do NOT copy the examples. Look at PCR, VWAP, OI data.
+- If PCR < 0.85 AND Price > VWAP = **CALL**
+- If PCR > 1.0 AND Price < VWAP = **PUT**
 - Give PUT when bearish, CALL when bullish. NO DEFAULT BIAS!
 - Prefer SCALP (20-30 pts) for higher win rate over HOLD (60-100 pts)
 - Confidence > 55 required for signal

@@ -415,6 +415,7 @@ class AITradingSystem:
         
         # Send Telegram alert only if confidence meets threshold
         if signal in ["CALL", "PUT"] and confidence >= AI_CONFIG.min_confidence:
+            logger.info(f"✅ Signal qualifies for alert: {signal} {confidence}% >= {AI_CONFIG.min_confidence}%")
             signal_key = f"{index_name}_{signal}_{analysis.get('entry_strike', 0)}"
             opposite_signal = "PUT" if signal == "CALL" else "CALL"
             
@@ -424,12 +425,17 @@ class AITradingSystem:
             
             # Check if we sent an OPPOSITE signal recently (flip-flop prevention)
             flip_flop_threshold = 300  # 5 minutes
+            flip_flop_blocked = False
             for key, last_time in self._last_signals.items():
                 if key.startswith(f"{index_name}_{opposite_signal}_"):
                     time_since_opposite = (current_time - last_time).total_seconds()
                     if time_since_opposite < flip_flop_threshold:
                         logger.info(f"⏸️ Skipping {signal} - sent opposite signal {int(time_since_opposite)}s ago")
-                        return
+                        flip_flop_blocked = True
+                        break
+            
+            if flip_flop_blocked:
+                return
             
             # Check if same signal was sent recently (repeat prevention)
             last_signal_time = self._last_signals.get(signal_key)
@@ -440,6 +446,13 @@ class AITradingSystem:
                 (current_time - last_signal_time).total_seconds() > time_threshold
             )
             
+            if not should_send:
+                time_since_last = (current_time - last_signal_time).total_seconds()
+                logger.info(f"⏸️ Skipping repeat signal - last sent {int(time_since_last)}s ago (need {time_threshold}s)")
+                return
+            
+            logger.info(f"📤 Preparing to send {signal} alert for {index_name}...")
+
             if should_send:
                 # Generate and send alert with index name
                 alert_message = await self.ai_analyzer.generate_alert_message(

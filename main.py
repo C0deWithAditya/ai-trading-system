@@ -218,9 +218,6 @@ class AITradingSystem:
                 except Exception as e:
                     logger.error(f"Error analyzing {index_config.display_name}: {e}")
             
-            # Check virtual trades for target/SL hit
-            await self._update_virtual_trades()
-            
             # Send hourly performance update
             await self._send_hourly_showcase()
                     
@@ -626,6 +623,19 @@ class AITradingSystem:
         except Exception as e:
             logger.error(f"Error in EOD analysis: {e}", exc_info=True)
     
+    async def _fast_pnl_update_loop(self):
+        """Ultra-fast loop to update P&L for dashboard (every 2 seconds)."""
+        while self._running:
+            try:
+                if self.is_market_hours():
+                    await self._update_virtual_trades()
+                await asyncio.sleep(2)  # Update P&L every 2 seconds
+            except asyncio.CancelledError:
+                break
+            except Exception as e:
+                logger.error(f"Error in fast P&L loop: {e}")
+                await asyncio.sleep(5)
+
     async def run(self):
         """Main run loop."""
         if not await self.initialize():
@@ -634,6 +644,9 @@ class AITradingSystem:
         
         self._running = True
         logger.info(f"🔄 Starting main loop with {SYSTEM_CONFIG.refresh_interval_seconds}s interval")
+        
+        # Start fast P&L update loop
+        asyncio.create_task(self._fast_pnl_update_loop())
         
         while self._running:
             try:

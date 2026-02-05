@@ -849,9 +849,6 @@ DASHBOARD_HTML = """
                 // Fetch candle updates for current chart
                 fetchCandles(currentChartIndex);
                 
-                // Fetch virtual trading data
-                fetchVirtualTrades();
-                
             } catch (e) { console.error(e); }
         }
         
@@ -1037,7 +1034,8 @@ DASHBOARD_HTML = """
                 loadUserData(); // Load user data
                 initializeChart();
                 fetchState();
-                setInterval(fetchState, 2000);
+                setInterval(fetchState, 5000); // Overall state every 5s
+                setInterval(fetchVirtualTrades, 1000); // P&L every 1s
                 startChartRefresh(); // Start live chart updates
                 console.log('Dashboard initialized successfully');
             } catch (e) {

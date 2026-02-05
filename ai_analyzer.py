@@ -82,10 +82,12 @@ class GeminiAnalyzer:
         call_oi_changes_str = ", ".join([f"{s}({c:+.1f}%)" for s, c in oi_changes.get("call", [])[:3]])
         put_oi_changes_str = ", ".join([f"{s}({c:+.1f}%)" for s, c in oi_changes.get("put", [])[:3]])
         
-        prompt = f"""You are an expert {index_name} options trader analyzing live market data. Provide a specific trading recommendation.
+        prompt = f"""You are an expert {index_name} options trader. Analyze the data and provide a NEUTRAL, DATA-DRIVEN recommendation. 
+
+**CRITICAL: You MUST give PUT signals when market is bearish. Do NOT have a bullish bias.**
 
 ## CURRENT MARKET DATA (Live) - {index_name}:
-- **{index_name} Spot Price**: {spot_price:,.2f}
+- **Spot Price**: {spot_price:,.2f}
 - **PCR (Put-Call Ratio)**: {pcr:.2f}
 - **Total Call OI**: {total_call_oi:,}
 - **Total Put OI**: {total_put_oi:,}
@@ -103,51 +105,69 @@ class GeminiAnalyzer:
 - Call OI Changes: {call_oi_changes_str}
 - Put OI Changes: {put_oi_changes_str}
 
-## MACRO & EXTERNAL CONTEXT:
-- **India VIX**: {india_vix or 'N/A'} (Measures market fear/volatility)
-- **Global Sentiment**: {global_sentiment} (e.g., Dow Jones, Nasdaq futures, Gift Nifty)
-- **Recent News**: {news_context}
+## MACRO CONTEXT:
+- **India VIX**: {india_vix or 'N/A'}
+- **Global Sentiment**: {global_sentiment}
+- **News**: {news_context}
 
-- **Recent News**: {news_context}
+## PREVIOUS LEARNINGS:
+{recent_learnings or 'First session.'}
 
-## PREVIOUS SYSTEM LEARNINGS (Self-Improvement):
-{recent_learnings or 'First session of the day.'}
+## SIGNAL DECISION RULES (FOLLOW STRICTLY):
 
-## ANALYSIS RULES:
-1. **SCALP vs HOLD**: You MUST distinguish between a quick 15-min Scalp and a 1-2 hour positional HOLD. 
-   - If the trend is strong and PCR is extreme, suggest a **HOLD** signal with a target of 60-100+ points.
-   - If the market is range-bound, suggest a **SCALP** signal with 20-30 point targets.
-2. **Volatility Guard**: If India VIX > 18, reduce confidence and increase stop-loss points. High VIX = High Risk.
-3. **Macro Alignment**: Ensure global sentiment (Bullish/Bearish) doesn't directly contradict your signal unless there's local strength/weakness.
-4. **Learning Loop**: Pay attention to "Previous System Learnings" to avoid repeat errors (e.g., "Don't buy CALLs near 26000 resistance").
-5. **Reversals require extreme data**: Only give a PUT signal during a BULLISH rally if PCR > 1.3 or there is massive Call OI addition at current levels. 
-6. **Short Covering Risk**: If price is rising fast toward a high Call OI strike, expect a breakout (short covering), NOT a reversal.
-7. **Holding Strategy**: For 1-2 hour HOLD signals, suggest a trailing SL or a wide SL (30-40 pts) to absorb noise.
+### WHEN TO GIVE **PUT** SIGNAL (BEARISH):
+1. PCR > 1.0 (More puts than calls = Bearish expectation)
+2. Price is BELOW VWAP (Weak price action)
+3. Price is falling towards support levels
+4. Massive Call OI addition at current levels (Writers expect fall)
+5. Global sentiment is Bearish
 
-## RESPOND IN THIS EXACT JSON FORMAT ONLY (no other text):
+### WHEN TO GIVE **CALL** SIGNAL (BULLISH):
+1. PCR < 0.8 (More calls than puts = Bullish expectation)
+2. Price is ABOVE VWAP (Strong price action)
+3. Price is rising towards resistance with momentum
+4. Massive Put OI addition at support (Writers expect support to hold)
+5. Global sentiment is Bullish
+
+### TRADE HORIZON RULES:
+**SCALP** (Quick 15-30 min trades):
+- Target: 20-30 points
+- Stop Loss: 10-15 points
+- Use when: Market is range-bound, VIX < 15, no clear trend
+
+**HOLD** (1-2 hour positional):
+- Target: 60-100 points
+- Stop Loss: 30-40 points
+- Use when: Strong trend confirmed, PCR extreme (<0.6 or >1.3), clear breakout
+
+### NEUTRAL CONDITIONS:
+- PCR between 0.85-1.05 with price near VWAP = NEUTRAL
+- Conflicting signals (e.g., bullish PCR but price below VWAP) = NEUTRAL or low confidence
+
+## RESPOND IN THIS EXACT JSON FORMAT ONLY:
 {{
-    "signal": "CALL",
-    "trade_horizon": "HOLD", 
-    "confidence": 75,
-    "entry_strike": 23000,
-    "target_points": 80,
-    "stop_loss_points": 35,
-    "risk_reward_ratio": "1:2.3",
-    "reasoning": "Explain why this is a 2-hour hold based on news, VIX, and OI trends. Explicitly mention the India-US trade deal impact if applicable.",
+    "signal": "PUT",
+    "trade_horizon": "SCALP", 
+    "confidence": 72,
+    "entry_strike": {int(spot_price // 100) * 100},
+    "target_points": 25,
+    "stop_loss_points": 12,
+    "risk_reward_ratio": "1:2",
+    "reasoning": "Price below VWAP (-0.3%), PCR at 1.05 indicates mild bearish bias. Call OI building at {resistance} acts as resistance. Scalp PUT with tight SL.",
     "key_levels": {{
-        "support": 22900,
-        "resistance": 23100
+        "support": {support},
+        "resistance": {resistance}
     }},
-    "market_bias": "BULLISH",
-    "factors_aligned": 4
+    "market_bias": "BEARISH",
+    "factors_aligned": 3
 }}
 
-IMPORTANT:
-- Only give CALL or PUT signal if confidence > 55 (Allows more signals while maintaining quality)
-- Be proactive on trend-following signals (alignment with VWAP and PCR).
-- If signals are conflicting (e.g., Price > VWAP but PCR is high), stay NEUTRAL.
-- Consider risk-reward ratio (minimum 1:1.5)
-- Replace example values with your actual analysis"""
+## CRITICAL REMINDERS:
+- Give PUT when bearish, CALL when bullish. NO DEFAULT BIAS!
+- Prefer SCALP (20-30 pts) for higher win rate over HOLD (60-100 pts)
+- Confidence > 55 required for signal
+- If truly uncertain, say NEUTRAL with reasoning"""
+
 
         try:
             session = await self._get_session()

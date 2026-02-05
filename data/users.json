@@ -1,0 +1,14 @@
+{
+  "admin@trading.ai": {
+    "email": "admin@trading.ai",
+    "password": "240be518fabd2724ddb6f04eeb1da5967448d7e831c08c8fa822809f74c720a9",
+    "name": "Admin",
+    "phone": "",
+    "is_admin": true,
+    "is_approved": true,
+    "subscription": "pro",
+    "subscription_expires": null,
+    "created_at": "2026-02-05T14:53:03.168918+05:30",
+    "last_login": null
+  }
+}

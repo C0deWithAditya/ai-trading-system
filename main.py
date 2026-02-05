@@ -387,7 +387,23 @@ class AITradingSystem:
         logger.info(f"🎯 {index_name} AI Signal: {signal} | Confidence: {confidence}%")
         logger.info(f"💡 Reasoning: {reasoning[:100]}...")
         
-        # Send alert if confidence meets threshold
+        # ALWAYS add signals to dashboard for visibility (even low confidence)
+        if signal in ["CALL", "PUT"]:
+            add_signal({
+                "index": index_name,
+                "signal": signal,
+                "strike": analysis.get("entry_strike", 0),
+                "confidence": confidence,
+                "reasoning": reasoning[:100] + "..." if len(reasoning) > 100 else reasoning,
+                "target": analysis.get("target_points", 0),
+                "stop_loss": analysis.get("stop_loss_points", 0),
+            })
+            logger.info(f"📊 Added {signal} signal to dashboard (confidence: {confidence}%)")
+        else:
+            # Log why we got NEUTRAL
+            logger.info(f"⏸️ {index_name} NEUTRAL signal - {reasoning[:80]}...")
+        
+        # Send Telegram alert only if confidence meets threshold
         if signal in ["CALL", "PUT"] and confidence >= AI_CONFIG.min_confidence:
             signal_key = f"{index_name}_{signal}_{analysis.get('entry_strike', 0)}"
             opposite_signal = "PUT" if signal == "CALL" else "CALL"
@@ -454,17 +470,6 @@ class AITradingSystem:
                         confidence=confidence,
                         reasoning=reasoning,
                     )
-                    
-                    # Add signal to dashboard with index
-                    add_signal({
-                        "index": index_name,
-                        "signal": signal,
-                        "strike": analysis.get("entry_strike", 0),
-                        "confidence": confidence,
-                        "reasoning": reasoning[:100] + "..." if len(reasoning) > 100 else reasoning,
-                        "target": analysis.get("target_points", 0),
-                        "stop_loss": analysis.get("stop_loss_points", 0),
-                    })
                     
                     # Open virtual trade for P&L tracking
                     virtual_trader = get_virtual_trader()

@@ -1394,14 +1394,23 @@ def api_close_trade(trade_id):
         from virtual_trader import get_virtual_trader
         trader = get_virtual_trader()
         
+        print(f"[MANUAL EXIT] Attempting to close trade #{trade_id}")
+        print(f"[MANUAL EXIT] Current trades: {[t.id for t in trader.trades]}")
+        print(f"[MANUAL EXIT] Open trades: {[t.id for t in trader.get_open_trades()]}")
+        
         # Find the trade
         trade = next((t for t in trader.trades if t.id == trade_id and t.status == 'OPEN'), None)
         if not trade:
+            print(f"[MANUAL EXIT] Trade #{trade_id} not found or already closed")
             return jsonify({"error": "Trade not found or already closed"}), 404
+        
+        print(f"[MANUAL EXIT] Found trade: {trade.signal_type} {trade.index} {trade.strike}")
+        print(f"[MANUAL EXIT] Current premium: {trade.current_premium}")
             
         # Close at current premium
         closed = trader.close_trade(trade_id, trade.current_premium, 'MANUAL_EXIT')
         if closed:
+            print(f"[MANUAL EXIT] Trade closed successfully with P&L: ₹{closed.pnl}")
             # Send Telegram Alert for Manual Exit
             try:
                 exit_msg = trader.get_exit_message(closed)
@@ -1409,11 +1418,15 @@ def api_close_trade(trade_id):
             except Exception as t_err:
                 print(f"Failed to send manual exit alert: {t_err}")
                 
-            return jsonify({"status": "ok", "message": "Trade closed manually"})
+            return jsonify({"status": "ok", "message": "Trade closed manually", "pnl": closed.pnl})
         else:
+            print(f"[MANUAL EXIT] close_trade returned None")
             return jsonify({"error": "Failed to close trade"}), 500
             
     except Exception as e:
+        print(f"[MANUAL EXIT] Exception: {e}")
+        import traceback
+        traceback.print_exc()
         return jsonify({"error": str(e)}), 500
 
 

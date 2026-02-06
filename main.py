@@ -455,6 +455,8 @@ class AITradingSystem:
             virtual_trader = get_virtual_trader()
             entry_strike = analysis.get("entry_strike", 0)
             
+            logger.info(f"🔥🔥🔥 ATTEMPTING TO OPEN VIRTUAL TRADE: {index_name} {signal} {entry_strike} 🔥🔥🔥")
+            
             # Prevent duplicate open trades for same strike/signal
             if virtual_trader.is_position_open(index_name, signal, entry_strike):
                 logger.info(f"⏸️ Virtual position already open for {index_name} {signal} {entry_strike}")
@@ -466,6 +468,8 @@ class AITradingSystem:
                         if s.get('strike_price') == entry_strike:
                             entry_premium = s.get('call_lp' if signal == 'CALL' else 'put_lp', 100)
                             break
+                
+                logger.info(f"💰💰💰 OPENING VIRTUAL TRADE NOW: {signal} {index_name} {entry_strike} @ ₹{entry_premium} 💰💰💰")
                 
                 virtual_trader.open_trade(
                     index=index_name,
@@ -483,6 +487,7 @@ class AITradingSystem:
                         "resistance": resistance
                     }
                 )
+                logger.info(f"✅✅✅ VIRTUAL TRADE OPENED SUCCESSFULLY! ✅✅✅")
 
             # TELEGRAM ALERT NOTIFICATION LOGIC
             last_signal_time = self._last_signals.get(signal_key)

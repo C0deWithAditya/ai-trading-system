@@ -167,10 +167,10 @@ Only give NEUTRAL when PCR is 0.92-0.98 AND price is exactly at VWAP AND no clea
     "target_points": 25,
     "stop_loss_points": 12,
     "risk_reward_ratio": "1:2",
-    "reasoning": "PCR at 0.72 shows bullish sentiment. Price above VWAP (+0.2%). Put OI building at support. Scalp CALL.",
+    "reasoning": "BULLISH SETUP: 1) PCR 0.72 indicating strong buying interest 2) Price trading above VWAP (+0.2%) showing intraday strength 3) India VIX at 12.5 indicates low volatility environment favorable for option buyers 4) Put writers active at 25500 support level 5) Global markets positive with US futures up 0.3%. Technical confluence suggests upside momentum.",
     "key_levels": {{"support": {support}, "resistance": {resistance}}},
     "market_bias": "BULLISH",
-    "factors_aligned": 4
+    "factors_aligned": 5
 }}
 
 **EXAMPLE 2 - BEARISH MARKET (Give PUT):**
@@ -182,20 +182,24 @@ Only give NEUTRAL when PCR is 0.92-0.98 AND price is exactly at VWAP AND no clea
     "target_points": 25,
     "stop_loss_points": 12,
     "risk_reward_ratio": "1:2",
-    "reasoning": "PCR at 1.15 shows bearish sentiment. Price below VWAP (-0.3%). Call OI at resistance. Scalp PUT.",
+    "reasoning": "BEARISH SETUP: 1) PCR at 1.15 showing aggressive call writing 2) Price below VWAP (-0.3%) indicating selling pressure 3) India VIX rising to 14.2 suggests market uncertainty 4) Heavy call OI at 25700 resistance acting as ceiling 5) Global cues mixed with Asian markets weak. Risk-off sentiment prevailing.",
     "key_levels": {{"support": {support}, "resistance": {resistance}}},
     "market_bias": "BEARISH",
-    "factors_aligned": 4
+    "factors_aligned": 5
 }}
 
-## CRITICAL REMINDERS:
-- **ANALYZE THE DATA FIRST, THEN DECIDE**: Do NOT copy the examples. Look at PCR, VWAP, OI data.
+## CRITICAL RULES FOR REASONING:
+1. **ALWAYS mention India VIX** in your reasoning (Low VIX = stable, High VIX = volatile)
+2. **ALWAYS mention Global Sentiment** (US markets, Asian markets)
+3. **ALWAYS mention at least 3-5 factors** supporting your signal
+4. **Structure your reasoning as numbered points** for clarity
+5. **Include specific numbers** (PCR value, VWAP deviation, VIX level)
+
+## REMINDERS:
 - If PCR < 0.9 AND Price > VWAP = Give **CALL** (confidence 60+)
 - If PCR > 0.95 AND Price < VWAP = Give **PUT** (confidence 60+)
-- Give PUT when bearish, CALL when bullish. NO DEFAULT BIAS!
 - Prefer SCALP (20-30 pts) for higher win rate
-- Confidence > 50 is acceptable for signals
-- Only say NEUTRAL if truly 50/50 - traders prefer low confidence signals over no signal"""
+- Only say NEUTRAL if truly 50/50"""
 
 
         try:

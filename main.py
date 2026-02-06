@@ -574,26 +574,25 @@ class AITradingSystem:
                 if spot_price > 0:
                     closed_trades = virtual_trader.check_and_update_trades(index_config.name, spot_price)
                     
-                    # Send telegram alerts for completed trades
+                    # NOTE: Trade exit alerts are now sent by virtual_trader to VT channel
+                    # No longer send to main signal channel
                     for trade in closed_trades:
-                        try:
-                            exit_msg = virtual_trader.get_exit_message(trade)
-                            await self.notifier.send_message(exit_msg)
-                            logger.info(f"📱 Sent trade exit alert for {trade.index} {trade.signal_type}")
-                        except Exception as e:
-                            logger.error(f"Error sending trade exit alert: {e}")
+                        logger.info(f"� Trade closed: {trade.index} {trade.signal_type} P&L: ₹{trade.pnl:+,.0f}")
         except Exception as e:
             logger.error(f"Error updating virtual trades: {e}")
     
     async def _send_hourly_showcase(self):
-        """Send hourly performance showcase to Telegram."""
+        """Send hourly performance showcase to VT Telegram channel (not signal channel)."""
         try:
             virtual_trader = get_virtual_trader()
             
             if virtual_trader.should_send_hourly_update():
                 showcase_msg = virtual_trader.get_showcase_message()
-                await self.notifier.send_message(showcase_msg)
-                logger.info("📊 Sent hourly performance showcase to Telegram")
+                # Send to VT channel, NOT the signal channel
+                from notifier import get_vt_notifier
+                vt_notifier = get_vt_notifier()
+                await vt_notifier.send_message(showcase_msg)
+                logger.info("📊 Sent hourly performance showcase to VT channel")
         except Exception as e:
             logger.error(f"Error sending hourly showcase: {e}")
     

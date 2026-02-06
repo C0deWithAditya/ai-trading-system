@@ -1411,10 +1411,11 @@ def api_close_trade(trade_id):
         closed = trader.close_trade(trade_id, trade.current_premium, 'MANUAL_EXIT')
         if closed:
             print(f"[MANUAL EXIT] Trade closed successfully with P&L: ₹{closed.pnl}")
-            # Send Telegram Alert for Manual Exit
+            # Send alert to VT channel (not signal channel)
             try:
+                from notifier import send_vt_telegram_sync
                 exit_msg = trader.get_exit_message(closed)
-                send_telegram_sync(exit_msg)
+                send_vt_telegram_sync(exit_msg)
             except Exception as t_err:
                 print(f"Failed to send manual exit alert: {t_err}")
                 

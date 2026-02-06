@@ -83,9 +83,15 @@ class GeminiAnalyzer:
         call_oi_changes_str = ", ".join([f"{s}({c:+.1f}%)" for s, c in oi_changes.get("call", [])[:3]])
         put_oi_changes_str = ", ".join([f"{s}({c:+.1f}%)" for s, c in oi_changes.get("put", [])[:3]])
         
-        prompt = f"""You are an expert {index_name} options trader. Analyze the data and provide a NEUTRAL, DATA-DRIVEN recommendation. 
+        prompt = f"""You are an expert {index_name} options trader. Analyze the data and provide a BALANCED, DATA-DRIVEN recommendation. 
 
-**CRITICAL: You MUST give PUT signals when market is bearish. Do NOT have a bullish bias.**
+**CRITICAL BALANCE RULE: Give CALL signals for bullish setups AND PUT signals for bearish setups. Do NOT favor one direction over another.**
+
+**SMART SIGNAL DETECTION:**
+- PCR < 0.85 = BULLISH sentiment → Favor CALL
+- PCR > 1.05 = BEARISH sentiment → Favor PUT
+- Price ABOVE VWAP = BULLISH momentum → Favor CALL
+- Price BELOW VWAP = BEARISH momentum → Favor PUT
 
 ## CURRENT MARKET DATA (Live) - {index_name}:
 - **Spot Price**: {spot_price:,.2f}

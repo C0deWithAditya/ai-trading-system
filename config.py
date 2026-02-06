@@ -38,9 +38,9 @@ class TelegramConfig:
 @dataclass
 class TradingConfig:
     """Trading strategy parameters."""
-    # PCR thresholds
-    pcr_bullish_threshold: float = 0.7  # PCR below this = bullish
-    pcr_bearish_threshold: float = 1.3  # PCR above this = bearish
+    # PCR thresholds - BALANCED for more signals
+    pcr_bullish_threshold: float = 0.85  # PCR below this = bullish (was 0.7)
+    pcr_bearish_threshold: float = 1.05  # PCR above this = bearish (was 1.3)
     
     # OI change thresholds (percentage)
     oi_change_significant: float = 5.0  # 5% change is significant

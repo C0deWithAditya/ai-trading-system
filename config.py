@@ -85,6 +85,7 @@ def load_config():
         access_token=os.getenv("UPSTOX_ACCESS_TOKEN", ""),
     )
     
+    # Primary Telegram for Signal Alerts
     telegram = TelegramConfig(
         bot_token=os.getenv("TELEGRAM_BOT_TOKEN", ""),
         chat_id=os.getenv("TELEGRAM_CHAT_ID", ""),
@@ -105,4 +106,20 @@ def load_config():
 
 # Global config instances
 UPSTOX_CONFIG, TELEGRAM_CONFIG, TRADING_CONFIG, SYSTEM_CONFIG, AI_CONFIG = load_config()
+
+
+# Second Telegram config for Virtual Trading updates
+@dataclass
+class VirtualTradingTelegramConfig:
+    """Telegram config for Virtual Trading channel."""
+    bot_token: str = ""
+    chat_id: str = ""
+    enabled: bool = True
+
+
+VIRTUAL_TRADING_TELEGRAM = VirtualTradingTelegramConfig(
+    bot_token=os.getenv("VT_TELEGRAM_BOT_TOKEN", ""),
+    chat_id=os.getenv("VT_TELEGRAM_CHAT_ID", ""),
+    enabled=os.getenv("VT_TELEGRAM_ENABLED", "true").lower() == "true",
+)
 

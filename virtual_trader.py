@@ -192,6 +192,25 @@ class VirtualTrader:
         self.save()
         
         logger.info(f"📈 Virtual Trade #{trade.id} opened: {signal_type} {index} {strike} @ ₹{entry_premium}")
+        
+        # Send notification to Virtual Trading channel
+        try:
+            import asyncio
+            from notifier import get_vt_notifier
+            vt_notifier = get_vt_notifier()
+            
+            # Try to send async, fall back to sync
+            try:
+                loop = asyncio.get_event_loop()
+                if loop.is_running():
+                    asyncio.ensure_future(vt_notifier.send_trade_opened(trade))
+                else:
+                    loop.run_until_complete(vt_notifier.send_trade_opened(trade))
+            except RuntimeError:
+                asyncio.run(vt_notifier.send_trade_opened(trade))
+        except Exception as e:
+            logger.error(f"Failed to send VT trade opened notification: {e}")
+        
         return trade
     
     def close_trade(self, trade_id: int, exit_premium: float, status: str = 'CLOSED'):
@@ -221,6 +240,23 @@ class VirtualTrader:
                     get_performance_manager().log_trade(trade.to_dict())
                 except Exception as db_err:
                     logger.error(f"Failed to log trade to permanent DB: {db_err}")
+                
+                # Send notification to Virtual Trading channel
+                try:
+                    import asyncio
+                    from notifier import get_vt_notifier
+                    vt_notifier = get_vt_notifier()
+                    
+                    try:
+                        loop = asyncio.get_event_loop()
+                        if loop.is_running():
+                            asyncio.ensure_future(vt_notifier.send_trade_closed(trade))
+                        else:
+                            loop.run_until_complete(vt_notifier.send_trade_closed(trade))
+                    except RuntimeError:
+                        asyncio.run(vt_notifier.send_trade_closed(trade))
+                except Exception as e:
+                    logger.error(f"Failed to send VT trade closed notification: {e}")
                     
                 logger.info(f"📊 Virtual Trade #{trade_id} closed: {status} | P&L: ₹{trade.pnl:,.0f}")
                 return trade

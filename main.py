@@ -619,6 +619,22 @@ class AITradingSystem:
                         spot_price=spot_price,
                         vwap=vwap,
                     )
+                
+                # Open virtual trade for P&L tracking
+                virtual_trader = get_virtual_trader()
+                if not virtual_trader.is_position_open(index_name, signal_type_str, signal.strike):
+                    virtual_trader.open_trade(
+                        index=index_name,
+                        signal_type=signal_type_str,
+                        strike=signal.strike,
+                        spot_price=spot_price,
+                        entry_premium=100,  # Default premium
+                        target_points=25,
+                        stop_loss_points=12,
+                        reasoning=f"[Rule-based] {reason[:100]}",
+                        market_context={"pcr": pcr_data.get('pcr_oi', 1.0), "vwap": vwap}
+                    )
+                    logger.info(f"📈 Rule-based virtual trade opened: {signal_type_str} {index_name} {signal.strike}")
                     
     async def _run_eod_analysis(self):
         """Analyze day's performance and generate learnings for tomorrow."""

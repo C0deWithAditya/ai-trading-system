@@ -25,3 +25,4 @@ logs/
 .DS_Store
 *.db
 index_config.json
+virtual_trades.json

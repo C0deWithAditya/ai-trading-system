@@ -598,7 +598,7 @@ class AITradingSystem:
             logger.error(f"Error sending hourly showcase: {e}")
     
     async def _run_rule_based_analysis(self, index_name, spot_price, strikes_data, pcr_data, vwap):
-        """Fallback to rule-based strategy."""
+        """Fallback to rule-based strategy - takes ONLY the BEST signal."""
         logger.info("📊 Running rule-based analysis (AI fallback)")
         
         signals = self.strategy.analyze(
@@ -608,59 +608,75 @@ class AITradingSystem:
             vwap=vwap,
         )
         
-        for signal in signals:
-            if signal.confidence >= 0.4:
-                reason = "\n".join(f"• {r}" for r in signal.reasons)
-                signal_type_str = "CALL" if signal.signal_type == SignalType.CALL else "PUT"
-                confidence_pct = int(signal.confidence * 100)
-                
-                # Add to dashboard for chart arrows
-                add_signal({
-                    "index": index_name,
-                    "signal": signal_type_str,
-                    "strike": signal.strike,
-                    "confidence": confidence_pct,
-                    "reasoning": f"[Rule-based] {reason[:80]}...",
-                    "target": 25,
-                    "stop_loss": 12,
-                })
-                logger.info(f"📊 Rule-based {signal_type_str} signal added to dashboard")
-                
-                # Send Telegram alert
-                if signal.signal_type == SignalType.CALL:
-                    await self.notifier.send_call_alert(
-                        strike=signal.strike,
-                        reason=reason,
-                        pcr=pcr_data['pcr_oi'],
-                        oi_change=signal.oi_change,
-                        spot_price=spot_price,
-                        vwap=vwap,
-                    )
-                elif signal.signal_type == SignalType.PUT:
-                    await self.notifier.send_put_alert(
-                        strike=signal.strike,
-                        reason=reason,
-                        pcr=pcr_data['pcr_oi'],
-                        oi_change=signal.oi_change,
-                        spot_price=spot_price,
-                        vwap=vwap,
-                    )
-                
-                # Open virtual trade for P&L tracking
-                virtual_trader = get_virtual_trader()
-                if not virtual_trader.is_position_open(index_name, signal_type_str, signal.strike):
-                    virtual_trader.open_trade(
-                        index=index_name,
-                        signal_type=signal_type_str,
-                        strike=signal.strike,
-                        spot_price=spot_price,
-                        entry_premium=100,  # Default premium
-                        target_points=25,
-                        stop_loss_points=12,
-                        reasoning=f"[Rule-based] {reason[:100]}",
-                        market_context={"pcr": pcr_data.get('pcr_oi', 1.0), "vwap": vwap}
-                    )
-                    logger.info(f"📈 Rule-based virtual trade opened: {signal_type_str} {index_name} {signal.strike}")
+        # ONLY take the BEST signal (first one, sorted by confidence)
+        if not signals:
+            logger.info("📊 No rule-based signals found")
+            return
+        
+        # Get the highest confidence signal only
+        best_signal = signals[0]  # Already sorted by confidence
+        
+        # Require minimum 50% confidence
+        if best_signal.confidence < 0.5:
+            logger.info(f"📊 Best signal only {best_signal.confidence*100:.0f}% confidence, skipping")
+            return
+        
+        signal = best_signal
+        reason = "\n".join(f"• {r}" for r in signal.reasons)
+        signal_type_str = "CALL" if signal.signal_type == SignalType.CALL else "PUT"
+        confidence_pct = int(signal.confidence * 100)
+        
+        # Check if we already have an open position for this index+direction
+        virtual_trader = get_virtual_trader()
+        if virtual_trader.is_position_open(index_name, signal_type_str):
+            logger.info(f"⏸️ Already have open {signal_type_str} position on {index_name}, skipping")
+            return
+        
+        # Add to dashboard for chart arrows
+        add_signal({
+            "index": index_name,
+            "signal": signal_type_str,
+            "strike": signal.strike,
+            "confidence": confidence_pct,
+            "reasoning": f"[Rule-based] {reason[:80]}...",
+            "target": 25,
+            "stop_loss": 12,
+        })
+        logger.info(f"📊 Rule-based {signal_type_str} signal added to dashboard")
+        
+        # Send Telegram alert
+        if signal.signal_type == SignalType.CALL:
+            await self.notifier.send_call_alert(
+                strike=signal.strike,
+                reason=reason,
+                pcr=pcr_data['pcr_oi'],
+                oi_change=signal.oi_change,
+                spot_price=spot_price,
+                vwap=vwap,
+            )
+        elif signal.signal_type == SignalType.PUT:
+            await self.notifier.send_put_alert(
+                strike=signal.strike,
+                reason=reason,
+                pcr=pcr_data['pcr_oi'],
+                oi_change=signal.oi_change,
+                spot_price=spot_price,
+                vwap=vwap,
+            )
+        
+        # Open virtual trade for P&L tracking
+        virtual_trader.open_trade(
+            index=index_name,
+            signal_type=signal_type_str,
+            strike=signal.strike,
+            spot_price=spot_price,
+            entry_premium=100,  # Default premium
+            target_points=25,
+            stop_loss_points=12,
+            reasoning=f"[Rule-based] {reason[:100]}",
+            market_context={"pcr": pcr_data.get('pcr_oi', 1.0), "vwap": vwap}
+        )
+        logger.info(f"📈 Rule-based virtual trade opened: {signal_type_str} {index_name} {signal.strike}")
                     
     async def _run_eod_analysis(self):
         """Analyze day's performance and generate learnings for tomorrow."""

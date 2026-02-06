@@ -331,10 +331,15 @@ class VirtualTrader:
         """Get all open trades."""
         return [t for t in self.trades if t.status == 'OPEN']
     
-    def is_position_open(self, index: str, signal_type: str, strike: int) -> bool:
-        """Check if a specific position is already open."""
+    def is_position_open(self, index: str, signal_type: str, strike: int = None) -> bool:
+        """Check if a position is already open for this index and signal type.
+        
+        IMPORTANT: We only allow ONE trade per index per direction at a time.
+        This prevents opening CALL NIFTY 25300, 25350, 25400, etc. simultaneously.
+        """
         for t in self.get_open_trades():
-            if t.index == index and t.signal_type == signal_type and t.strike == strike:
+            # Check if ANY trade is open for this index + signal (ignore strike)
+            if t.index == index and t.signal_type == signal_type:
                 return True
         return False
     

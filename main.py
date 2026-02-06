@@ -384,8 +384,13 @@ class AITradingSystem:
         confidence = analysis.get("confidence", 0)
         reasoning = analysis.get("reasoning", "No reasoning provided")
         
+        # Log detailed market conditions for signal transparency
+        price_vs_vwap = "ABOVE" if vwap and spot_price > vwap else "BELOW" if vwap else "N/A"
+        market_bias = "BULLISH" if pcr < 0.95 else "BEARISH" if pcr > 1.05 else "NEUTRAL"
+        
         logger.info(f"🎯 {index_name} AI Signal: {signal} | Confidence: {confidence}%")
-        logger.info(f"💡 Reasoning: {reasoning[:100]}...")
+        logger.info(f"📊 Market: PCR={pcr:.2f} ({market_bias}) | Price {price_vs_vwap} VWAP | VIX={india_vix}")
+        logger.info(f"💡 Reasoning: {reasoning[:150]}...")
         
         # Check if AI failed (quota exhausted, API error) - fall back to rule-based
         if "API error" in reasoning or "unavailable" in reasoning.lower() or confidence == 0:

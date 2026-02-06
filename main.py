@@ -457,8 +457,17 @@ class AITradingSystem:
             
             logger.info(f"🔥🔥🔥 ATTEMPTING TO OPEN VIRTUAL TRADE: {index_name} {signal} {entry_strike} 🔥🔥🔥")
             
+            # Debug: Show current open trades
+            open_trades = virtual_trader.get_open_trades()
+            logger.info(f"📋 Current open trades: {len(open_trades)}")
+            for t in open_trades:
+                logger.info(f"   - {t.index} {t.signal_type} {t.strike}")
+            
             # Prevent duplicate open trades for same strike/signal
-            if virtual_trader.is_position_open(index_name, signal, entry_strike):
+            is_open = virtual_trader.is_position_open(index_name, signal, entry_strike)
+            logger.info(f"🔍 is_position_open({index_name}, {signal}, {entry_strike}) = {is_open}")
+            
+            if is_open:
                 logger.info(f"⏸️ Virtual position already open for {index_name} {signal} {entry_strike}")
             else:
                 # Try to fetch real entry premium from option chain

@@ -475,8 +475,15 @@ class AITradingSystem:
                     entry_premium = 100  # Default fallback
                     if strikes_data and entry_strike > 0:
                         for s in strikes_data:
-                            if s.get('strike_price') == entry_strike:
-                                entry_premium = s.get('call_lp' if signal == 'CALL' else 'put_lp', 100)
+                            # Handle both dict and StrikeData object
+                            strike_price = s.get('strike_price') if isinstance(s, dict) else getattr(s, 'strike_price', 0)
+                            if strike_price == entry_strike:
+                                if signal == 'CALL':
+                                    entry_premium = s.get('call_ltp') if isinstance(s, dict) else getattr(s, 'call_ltp', 100)
+                                else:
+                                    entry_premium = s.get('put_ltp') if isinstance(s, dict) else getattr(s, 'put_ltp', 100)
+                                if entry_premium == 0 or entry_premium is None:
+                                    entry_premium = 100
                                 break
                     
                     logger.info(f"💰💰💰 OPENING VIRTUAL TRADE NOW: {signal} {index_name} {entry_strike} @ ₹{entry_premium} 💰💰💰")

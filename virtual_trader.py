@@ -227,7 +227,13 @@ class VirtualTrader:
         return None
     
     def check_and_update_trades(self, index: str, spot_price: float, option_prices: Dict[int, Dict] = None) -> List[VirtualTrade]:
-        """Check open trades and update their status based on current prices."""
+        """Check open trades and update their status based on current prices.
+        
+        Implements TRAILING STOP-LOSS:
+        - When profit >= 10 points: Move SL to breakeven
+        - When profit >= 15 points: Trail SL to +8 points
+        - When profit >= 20 points: Trail SL to +12 points (lock most profit)
+        """
         closed_trades = []
         for trade in self.trades:
             if trade.status != 'OPEN':
@@ -248,14 +254,39 @@ class VirtualTrader:
             current_premium = max(1, trade.entry_premium + premium_change)
             trade.update_mtm(current_premium)
             
+            # Calculate current profit in points
+            current_profit = current_premium - trade.entry_premium
+            
+            # ==== TRAILING STOP-LOSS LOGIC ====
+            # Calculate dynamic stop-loss based on highest profit achieved
+            trailing_sl_level = trade.entry_premium - trade.stop_loss_points  # Original SL
+            
+            # Get highest premium seen (tracks max profit)
+            max_profit = trade.highest_premium - trade.entry_premium
+            
+            # Apply trailing stop-loss rules
+            if max_profit >= 20:
+                # Lock in +12 points (60% of max profit)
+                trailing_sl_level = trade.entry_premium + 12
+                logger.info(f"📈 Trade #{trade.id}: Max profit {max_profit:.0f}pts, trailing SL at +12")
+            elif max_profit >= 15:
+                # Lock in +8 points
+                trailing_sl_level = trade.entry_premium + 8
+            elif max_profit >= 10:
+                # Move to breakeven
+                trailing_sl_level = trade.entry_premium
+            
             # Check target hit
             if current_premium >= trade.entry_premium + trade.target_points:
                 closed = self.close_trade(trade.id, trade.entry_premium + trade.target_points, 'TARGET_HIT')
                 if closed: closed_trades.append(closed)
-            # Check stop loss hit
-            elif current_premium <= trade.entry_premium - trade.stop_loss_points:
-                closed = self.close_trade(trade.id, trade.entry_premium - trade.stop_loss_points, 'SL_HIT')
-                if closed: closed_trades.append(closed)
+            # Check TRAILING stop loss hit (smarter SL)
+            elif current_premium <= trailing_sl_level:
+                exit_status = 'SL_HIT' if trailing_sl_level < trade.entry_premium else 'TRAILING_SL'
+                closed = self.close_trade(trade.id, current_premium, exit_status)
+                if closed: 
+                    closed_trades.append(closed)
+                    logger.info(f"📊 Trade #{trade.id} closed by trailing SL at ₹{current_premium:.2f}")
         
         self.save()
         return closed_trades

@@ -470,33 +470,38 @@ class AITradingSystem:
             if is_open:
                 logger.info(f"⏸️ Virtual position already open for {index_name} {signal} {entry_strike}")
             else:
-                # Try to fetch real entry premium from option chain
-                entry_premium = 100  # Default fallback
-                if strikes_data and entry_strike > 0:
-                    for s in strikes_data:
-                        if s.get('strike_price') == entry_strike:
-                            entry_premium = s.get('call_lp' if signal == 'CALL' else 'put_lp', 100)
-                            break
-                
-                logger.info(f"💰💰💰 OPENING VIRTUAL TRADE NOW: {signal} {index_name} {entry_strike} @ ₹{entry_premium} 💰💰💰")
-                
-                virtual_trader.open_trade(
-                    index=index_name,
-                    signal_type=signal,
-                    strike=entry_strike,
-                    spot_price=spot_price,
-                    entry_premium=entry_premium,
-                    target_points=analysis.get("target_points", 25),
-                    stop_loss_points=analysis.get("stop_loss_points", 12),
-                    reasoning=reasoning,
-                    market_context={
-                        "pcr": pcr,
-                        "vwap": vwap,
-                        "support": support,
-                        "resistance": resistance
-                    }
-                )
-                logger.info(f"✅✅✅ VIRTUAL TRADE OPENED SUCCESSFULLY! ✅✅✅")
+                try:
+                    # Try to fetch real entry premium from option chain
+                    entry_premium = 100  # Default fallback
+                    if strikes_data and entry_strike > 0:
+                        for s in strikes_data:
+                            if s.get('strike_price') == entry_strike:
+                                entry_premium = s.get('call_lp' if signal == 'CALL' else 'put_lp', 100)
+                                break
+                    
+                    logger.info(f"💰💰💰 OPENING VIRTUAL TRADE NOW: {signal} {index_name} {entry_strike} @ ₹{entry_premium} 💰💰💰")
+                    
+                    virtual_trader.open_trade(
+                        index=index_name,
+                        signal_type=signal,
+                        strike=entry_strike,
+                        spot_price=spot_price,
+                        entry_premium=entry_premium,
+                        target_points=analysis.get("target_points", 25),
+                        stop_loss_points=analysis.get("stop_loss_points", 12),
+                        reasoning=reasoning,
+                        market_context={
+                            "pcr": pcr,
+                            "vwap": vwap,
+                            "support": support,
+                            "resistance": resistance
+                        }
+                    )
+                    logger.info(f"✅✅✅ VIRTUAL TRADE OPENED SUCCESSFULLY! ✅✅✅")
+                except Exception as vt_error:
+                    logger.error(f"❌❌❌ ERROR OPENING VIRTUAL TRADE: {vt_error} ❌❌❌")
+                    import traceback
+                    logger.error(traceback.format_exc())
 
             # TELEGRAM ALERT NOTIFICATION LOGIC
             last_signal_time = self._last_signals.get(signal_key)
